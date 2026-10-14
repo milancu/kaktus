@@ -122,7 +122,7 @@ function runCist(args, io) {
     (0, fs_util_1.writeJsonAtomic)(outFile, (0, read_1.toVystup)(data));
     const dodavatelu = data.firmy.reduce((n, f) => n + (f.dodavatele?.length ?? 0), 0);
     const faktur = data.firmy.reduce((n, f) => n + (f.faktury?.length ?? 0), 0);
-    io.out(`Načteno: ${data.firmy.length} firem, ${dodavatelu} dodavatelů, ${faktur} přijatých faktur. Výstup: ${outFile}`);
+    io.out(`Načteno – firmy: ${data.firmy.length}, dodavatelé: ${dodavatelu}, přijaté faktury: ${faktur}. Výstup: ${outFile}`);
     return 0;
 }
 /** Krátké české shrnutí běhu (bez dat dokladů). */

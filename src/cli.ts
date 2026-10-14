@@ -101,7 +101,7 @@ function runCist(args: ParsedArgs, io: Io): number {
   writeJsonAtomic(outFile, toVystup(data));
   const dodavatelu = data.firmy.reduce((n, f) => n + (f.dodavatele?.length ?? 0), 0);
   const faktur = data.firmy.reduce((n, f) => n + (f.faktury?.length ?? 0), 0);
-  io.out(`Načteno: ${data.firmy.length} firem, ${dodavatelu} dodavatelů, ${faktur} přijatých faktur. Výstup: ${outFile}`);
+  io.out(`Načteno – firmy: ${data.firmy.length}, dodavatelé: ${dodavatelu}, přijaté faktury: ${faktur}. Výstup: ${outFile}`);
   return 0;
 }
 

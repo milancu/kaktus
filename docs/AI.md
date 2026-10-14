@@ -1,34 +1,44 @@
 # Práce s AI
 
-Instrukce pro agenty jsou v `CLAUDE.md` (role, časový rozpočet, pravidla, bezpečnostní požadavky). Subagenti jsou definovaní v `.claude/agents/`.
+Instrukce pro agenty jsou v `CLAUDE.md` (kontext, zjištění o Kaktusu, časový rozpočet, pravidla,
+bezpečnostní požadavky), subagenti v `.claude/agents/` (implementor, test-writer, reviewer,
+docs-writer – každý s vlastními pravidly, modelem a effortem).
 
-## Co dělala AI (z CLAUDE.md a git logu)
+## Jak to probíhalo
 
-- Orchestrátor (Claude Code) kód nepsal. Zadával úkoly subagentům, spouštěl testy a CLI a commitoval.
-- Subagenti: `implementor` (čtení, zápis, opravy), `test-writer`, `reviewer`, `docs-writer`.
-- Historie má 11 commitů v jednom dni (od 11:45 do 13:12 podle časů commitů):
-  1. zadání a instrukce pro agenty,
-  2. kostra a `cist`,
-  3. plán zápisu,
-  4. příkaz `zapis`,
-  5. testy,
-  6. opravy z review R1–R6,
-  7. regresní testy k nálezům,
-  8. nízké nálezy z re-review,
-  9. výstupy finálního běhu.
-- Review našlo 1 vysoký nález a 4 střední (R1–R5) a 1 nízký (R6). Všechny jsou opraveny (commit `57bc470`, regresní testy `54cd0ec`).
-- Re-review našlo 3 nízké nálezy. Jsou v `docs/PRED-NASAZENIM.md`.
-- Výsledek: 207 testů, výstupy v `out/`, druhý běh `zapis` nezapsal nic nového.
-- Do kódu simulátoru jsme se dívali.
+- **Rozbor (session 1, Claude Code):** AI prošla zadání, data a minifikovaný kód simulátoru
+  a sepsala, kde se Kaktus chová jinak než příručka (CP852, limit 20 dokladů, žádná kontrola
+  duplicit, exit kódy 0–4, ořezy polí…). Z toho vznikl `CLAUDE.md` a definice agentů.
+- **Implementace (session 2, orchestrátor):** spuštěná přes `/goal` s měřitelnými kritérii
+  (testy, očekávané stavy konkrétních dokladů, idempotentní druhý běh, čistý `git status`).
+  Orchestrátor kód nepsal, delegoval na subagenty a po každém kroku commitoval (viz `git log`).
+- **Review:** reviewer našel 1 vysoký, 4 střední a 1 nízký nález (R1–R6), všechny opravené
+  (`57bc470`) s regresními testy (`54cd0ec`); nízké nálezy z re-review jsou v
+  `docs/PRED-NASAZENIM.md`.
+- **Nezávislé ověření a úprava (session 1):** AI zopakovala běh na kopii dat (zamčená firma →
+  `neprovedeno` a doběhnutí po odemčení, žádné duplicity v DBF, uložení speciálních znaků)
+  a přímo v této session změnila formát částek ve výstupu čtení (`4ecfb0b`).
 
 ## Co jsem ověřoval sám
 
-TODO (uživatel doplní).
+- Kód simulátoru je minifikovaný; prošla ho AI, já jsem z rozboru pochopil, co zhruba dělá,
+  a jednotlivá zjištění jsem si nechal vysvětlit.
+- S pomocí AI jsem si udělal artifact, na kterém jsem si ověřil své předpoklady, jak řešení
+  funguje teď a jak má fungovat.
+- Výsledek orchestrátora jsem nenechal bez kontroly: nechal jsem ho nezávisle přezkoušet
+  v druhé session (testy, celý běh zápisu, zamčená firma, duplicity).
 
 ## Kde se AI spletla
 
-TODO (uživatel doplní).
+- Plán původně stavěl na Node 24 a nativním spouštění `.ts`; na to, že zadání uvádí Node 18+,
+  jsem upozornil já. Opraveno kompilací do `dist/` (`da0e9e0`).
+- Hned v první odpovědi si AI vyložila můj dotaz tak, že si TAXY pletu s daněmi.
+- Výstup čtení měl částky v haléřích jako čísla bez označení jednotky (EUR faktura 2360.00
+  vypadala jako 236000); odhaleno až při kontrole výstupu, opraveno (`4ecfb0b`).
+- Deduplikace v první verzi selhala, když IČO chybělo jen na jedné straně, a testy to
+  nezachytily – našel to až reviewer (R1).
 
 ## Čas a částka
 
-TODO (uživatel doplní): čas strávený na úkolu a částka k proplacení.
+- Čas: necelé 3 hodiny.
+- Částka k proplacení: 2 000 Kč.

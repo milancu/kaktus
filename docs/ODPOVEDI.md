@@ -2,7 +2,7 @@
 
 ## 1. Příkaz „zapiš doklad X do firmy Y“: co musí platit, aby ho Connector směl provést?
 
-Firmu nikdy nebereme z příkazu ani z obsahu dokladu, ale jen z `klienti.json`: `klientId` tam musí být právě jednou a mapovat se na `kaktusFirma` ve tvaru čtyř číslic. Ta firma musí existovat ve `FIRMY.DBF` a nesmí být smazaná. IČO odběratele na dokladu, IČO klienta a `FIRMY.ICO` se musí všechna tři shodovat; při nesouladu doklad odmítneme a nehádáme. Teprve potom se doklad validuje (typ a stav schváleno, konečná čísla, povolené sazby DPH, limity délek, bezpečné `id`) a deduplikuje. Doklad, který kontrolou neprojde, se nezapíše nikam a v reportu je `odmitnuto` s důvodem.
+Příkaz musí být prokazatelně od serveru TAXY a pro tuto kancelář (ověřené spojení, příkaz určený této instalaci Connectoru); to řeší hotový Connector a modul to předpokládá. Firmu Y pak nesmí určovat příkaz ani obsah dokladu, ale jen seznam klientů kanceláře: `klientId` dokladu tam musí být právě jednou a mapovat se na firmu Y, která existuje a není smazaná ve `FIRMY.DBF`. IČO odběratele na dokladu, IČO klienta a IČO firmy v Kaktusu se musí shodovat; při jakémkoli nesouladu doklad odmítneme a nehádáme. Doklad musí být schválený, platný (povinná pole, částky, sazby, délky) a nesmí už v Kaktusu být (značka `TAXY:<id>` nebo stejný dodavatel a číslo dokladu). Firma nesmí být právě otevřená u účetní; jinak je výsledek `neprovedeno` a příkaz se zopakuje později.
 
 ## 2. Počítač se vypne uprostřed zápisu dávky: v jakém stavu jsme a co se stane po zapnutí?
 

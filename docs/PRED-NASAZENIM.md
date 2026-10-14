@@ -14,3 +14,4 @@ práce vypadlo z plánu.
 - Telemetrie a monitoring napříč stovkami kanceláří; verzování modulu a detekce verze Kaktusu.
 - Velká data (tisíce faktur – DBF se přepisuje celý při každém appendu), výkon a timeouty.
 - Další typy dokladů (vydané faktury), dobropisy (záporné částky), zaokrouhlení jako samostatná položka.
+- Záložní dedup podle `CISLODOD` porovnává po ořezu na 20 znaků – dvě čísla dokladu lišící se až za 20. znakem se tváří jako duplicita (doklad má varování o ořezu). Řešit s TAXY (delší pole jinde v Kaktusu?).

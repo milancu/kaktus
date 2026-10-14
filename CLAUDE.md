@@ -20,11 +20,17 @@ Překročí-li blok čas o víc než 15 min, orchestrátor ho zúží a zbytek z
 
 ## Technologie a konvence
 
-- Node 24+, TypeScript spouštěný nativně (`node src/cli.ts`) – pouze „erasable“ syntaxe
-  (žádné `enum`, `namespace`, parameter properties). Typová kontrola `npx tsc --noEmit`.
+- **Cíl: Node 18+.** Zadání uvádí „Node 18+, bez instalace“ a hodnotitel může mít starší Node,
+  než je náš vývojový (24). TypeScript se proto kompiluje `tsc` do `dist/` (`npm run build`)
+  a spouští `node dist/cli.js` – nespoléhat na nativní spouštění `.ts` (to umí až Node 22.6+).
+- Nepoužívat API novější než Node 18 (např. `fs.glob`, `import.meta.dirname`,
+  `process.loadEnvFile`, `--experimental-strip-types`). `package.json`: `"engines": {"node": ">=18"}`.
+- `dist/` se commituje, aby šlo spustit hned po rozbalení bez `npm install`.
 - **Žádné runtime závislosti.** DBF parser, CP852/Win-1250 kodeky a XML escapování píšeme
   sami (je to pár desítek řádků). Dev závislost jen `typescript` (pinned, lockfile).
-- Testy: `node --test test/` (vestavěný runner).
+- Testy: `npm test` = build + vestavěný `node --test` nad zkompilovanými testy. Musí fungovat
+  na Node 18 i 24 a na Windows (cmd v npm skriptech nerozbaluje globy – soubory vyjmenovat
+  nebo předat adresář tak, aby to fungovalo v obou verzích; ověřit).
 - Identifikátory anglicky, doménové pojmy z TAXY/Kaktusu ponechat (`cisloDokladu`, `FAKPRI`).
   Hlášky a výstupy pro uživatele česky.
 - Výstupy JSON (UTF-8), zapisované atomicky (tmp soubor + rename).
@@ -48,8 +54,9 @@ out/                  výstupy běhu (commitují se – jsou součástí odevzd�
 ## CLI
 
 ```
-node src/cli.ts cist  --kaktus ./kaktus --out out/kaktus-data.json
-node src/cli.ts zapis --kaktus ./kaktus --klienti taxy/klienti.json \
+npm run build
+node dist/cli.js cist  --kaktus ./kaktus --out out/kaktus-data.json
+node dist/cli.js zapis --kaktus ./kaktus --klienti taxy/klienti.json \
                       --doklady taxy/doklady-k-zapisu.json --out out/zapis-report.json [--dry-run]
 ```
 
@@ -150,5 +157,6 @@ ZAKL0/ZAKL12/DPH12/ZAKL21/DPH21/CELKEM N12.2, MENA C3, KURZ N10.4, TEXT C50, POZ
 - `cist` i `zapis` běží nad čistými daty (`node kaktus/kaktus.cjs obnovit`) a výstupy jsou v `out/`.
 - Druhé spuštění `zapis` nezapíše nic nového (všechno `jiz_zapsano`).
 - Zamčená firma → report `neprovedeno`, exit 2, nic nezapsáno; po odemčení doběhne.
-- `node --test` a `npx tsc --noEmit` projdou; reviewer nemá otevřené nálezy priority vysoká.
+- `npm run build` a `npm test` projdou na Node 24 a CLI běží i na Node 18
+  (`npx -y node@18 dist/cli.js cist ...`); reviewer nemá otevřené nálezy priority vysoká.
 - README ≤ 400 slov, odpovědi na 2 otázky ≤ 5 vět, sekce o práci s AI, čas a částka.

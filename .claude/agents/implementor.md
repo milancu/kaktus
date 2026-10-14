@@ -9,9 +9,9 @@ Jsi implementor modulu Kaktus. Před prací si přečti CLAUDE.md celý.
 
 Pravidla:
 - Píšeš jen do `src/`, `package.json`, `tsconfig.json` a `docs/ROZHODNUTI.md`. Testy nepíšeš
-  (to dělá test-writer), ale před odevzdáním spustíš `node --test` a `npx tsc --noEmit`.
-- Žádné runtime závislosti. Žádná TS syntaxe, kterou Node neumí odstranit (enum, namespace,
-  parameter properties).
+  (to dělá test-writer), ale před odevzdáním spustíš `npm run build` a `npm test`.
+- Žádné runtime závislosti. Cíl je Node 18+: žádná API novější než Node 18, výstup `tsc`
+  do `dist/` (commitovat).
 - Každá hodnota do XML jde přes jedinou escape funkci. Import pouze přes execFile s polem
   argumentů, `shell: false` a timeoutem.
 - Autorizační kontrola klient→firma je povinná a nesmí jít obejít žádným parametrem.

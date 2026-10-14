@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Píše jednotkové a integrační testy v test/ (node --test). Použij po dokončení implementace nebo opravy.
+description: Píše jednotkové a integrační testy v test/ (node --test, spouští se `npm test`). Použij po dokončení implementace nebo opravy.
 tools: Read, Edit, Write, Bash, Glob, Grep
 model: sonnet
 effort: medium

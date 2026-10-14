@@ -9,7 +9,7 @@
 
 import { encodeWin1250, isXmlChar } from "../codec";
 import { AMOUNT_OUT_RE, DATE_RE, ICO_RE, KURZ_RE, MENA_RE } from "./format";
-import { FIRMA_ID_RE } from "./read";
+import { FIRMA_ID_RE, centsToDecimal } from "./read";
 
 /** Kaktus zpracuje jen prvních 20 dokladů dávky. */
 export const MAX_BATCH_SIZE = 20;
@@ -76,9 +76,7 @@ export function escapeXml(value: string): string {
 
 /** Haléře → text částky s tečkou a dvěma desetinnými místy (např. 244057 → "2440.57"). */
 export function formatCents(cents: number): string {
-  if (!Number.isSafeInteger(cents)) throw new Error("Částka musí být celé číslo haléřů.");
-  const abs = Math.abs(cents);
-  const text = `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
+  const text = centsToDecimal(cents);
   if (!AMOUNT_OUT_RE.test(text)) throw new Error("Částka je mimo rozsah formátu Kaktusu.");
   return text;
 }

@@ -11,8 +11,11 @@ Průběžně doplňováno; podklad pro README.
 - Výstup má pro každou firmu dodavatele (ADRESAR) a přijaté faktury (FAKPRI); faktura odkazuje
   na dodavatele přes `partnerId` (= `ADRESAR.ID`). Výstup neobsahuje časové razítko, aby byl
   při stejných datech bajtově shodný (porovnání běhů, čisté commity do `out/`).
-- Částky ve výstupu jsou v haléřích (celá čísla), převod z textu DBF probíhá řetězcově bez
-  floatu. Data jsou ISO `RRRR-MM-DD`. IČO je řetězec o 8 číslicích (doplněné úvodní nuly).
+- Částky ve výstupu (`format: 2`) jsou desetinné řetězce v měně dokladu s tečkou a dvěma
+  místy (`"2360.00"`), kurz řetězec se čtyřmi místy (`"24.3150"`). Ve `format: 1` byly
+  v haléřích jako čísla bez označení jednotky – příjemce by je snadno vzal stokrát větší.
+  Uvnitř programu se dál počítá v haléřích (celá čísla, převod z DBF řetězcově bez floatu).
+  Data jsou ISO `RRRR-MM-DD`. IČO je řetězec o 8 číslicích (doplněné úvodní nuly).
 - **Přísné čtení DBF:** jiná verze než dBase III (0x03), jiný LDID než 100 (CP852), nesedící
   délka záznamu, useknutý soubor nebo neplatný příznak záznamu = chyba vstupu (exit 1), ne
   hádání. Soubor větší než 256 MiB se nečte.

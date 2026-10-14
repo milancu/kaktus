@@ -69,11 +69,28 @@ export interface FirmaData {
   faktury: FakturaPrijata[];
 }
 
-/** Firma ve výstupu `cist`; u smazané firmy jsou `dodavatele` a `faktury` null (data se nečtou). */
-export type FirmaVystup = Firma & { dodavatele: Dodavatel[] | null; faktury: FakturaPrijata[] | null };
+/** Načtená firma; u smazané firmy jsou `dodavatele` a `faktury` null (data se nečtou). */
+export type FirmaNactena = Firma & { dodavatele: Dodavatel[] | null; faktury: FakturaPrijata[] | null };
+
+export interface KaktusData {
+  firmy: FirmaNactena[];
+}
+
+type CastkaPole = "zaklad0" | "zaklad12" | "dph12" | "zaklad21" | "dph21" | "celkem";
+const CASTKA_POLE: readonly CastkaPole[] = ["zaklad0", "zaklad12", "dph12", "zaklad21", "dph21", "celkem"];
+
+/**
+ * Faktura ve výstupu `cist`: částky jsou desetinné řetězce v měně dokladu s tečkou a dvěma
+ * desetinnými místy ("2360.00"), kurz řetězec se čtyřmi místy ("24.3150"). Haléře jako čísla
+ * by šlo snadno přečíst stokrát větší a float by u částek ztrácel přesnost.
+ */
+export type FakturaVystup = Omit<FakturaPrijata, CastkaPole | "kurz"> &
+  { [K in CastkaPole]: string | null } & { kurz: string | null };
+
+export type FirmaVystup = Firma & { dodavatele: Dodavatel[] | null; faktury: FakturaVystup[] | null };
 
 export interface KaktusVystup {
-  format: 1;
+  format: 2;
   firmy: FirmaVystup[];
 }
 
@@ -90,6 +107,13 @@ export function parseCents(text: string, where: string): number {
   const cents = whole * 100 + frac;
   if (!Number.isSafeInteger(cents)) throw new VstupniChyba(`Částka je mimo rozsah (${where}).`);
   return m[1] === "-" ? -cents : cents;
+}
+
+/** Haléře → desetinný text s tečkou a dvěma místy (244057 → "2440.57"). Bez floatu. */
+export function centsToDecimal(cents: number): string {
+  if (!Number.isSafeInteger(cents)) throw new Error("Částka musí být celé číslo haléřů.");
+  const abs = Math.abs(cents);
+  return `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
 }
 
 export function parseInteger(text: string, where: string): number {
@@ -314,12 +338,29 @@ export function readFirmaData(kaktusDir: string, firmaId: string): FirmaData {
   return { firma, dodavatele: readDodavatele(dir, firma.id), faktury: readFaktury(dir, firma.id) };
 }
 
-/** Celý výstup příkazu `cist`: všechny firmy s dodavateli a přijatými fakturami. */
-export function readAll(kaktusDir: string): KaktusVystup {
-  const firmy: FirmaVystup[] = readFirmy(kaktusDir).map((firma) => {
+/** Všechny firmy s dodavateli a přijatými fakturami (částky v haléřích). */
+export function readAll(kaktusDir: string): KaktusData {
+  const firmy: FirmaNactena[] = readFirmy(kaktusDir).map((firma) => {
     if (firma.smazano) return { ...firma, dodavatele: null, faktury: null };
     const dir = resolveFirmaDir(kaktusDir, firma);
     return { ...firma, dodavatele: readDodavatele(dir, firma.id), faktury: readFaktury(dir, firma.id) };
   });
-  return { format: 1, firmy };
+  return { firmy };
+}
+
+export function toFakturaVystup(f: FakturaPrijata): FakturaVystup {
+  const out = { ...f, kurz: f.kurz === null ? null : f.kurz.toFixed(4) } as unknown as FakturaVystup;
+  for (const k of CASTKA_POLE) {
+    const v = f[k];
+    out[k] = v === null ? null : centsToDecimal(v);
+  }
+  return out;
+}
+
+/** Výstup příkazu `cist` (JSON pro TAXY): částky jako desetinné řetězce, viz `FakturaVystup`. */
+export function toVystup(data: KaktusData): KaktusVystup {
+  return {
+    format: 2,
+    firmy: data.firmy.map((f) => ({ ...f, faktury: f.faktury === null ? null : f.faktury.map(toFakturaVystup) })),
+  };
 }

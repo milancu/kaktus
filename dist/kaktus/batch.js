@@ -50,10 +50,7 @@ function escapeXml(value) {
 }
 /** Haléře → text částky s tečkou a dvěma desetinnými místy (např. 244057 → "2440.57"). */
 function formatCents(cents) {
-    if (!Number.isSafeInteger(cents))
-        throw new Error("Částka musí být celé číslo haléřů.");
-    const abs = Math.abs(cents);
-    const text = `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
+    const text = (0, read_1.centsToDecimal)(cents);
     if (!format_1.AMOUNT_OUT_RE.test(text))
         throw new Error("Částka je mimo rozsah formátu Kaktusu.");
     return text;

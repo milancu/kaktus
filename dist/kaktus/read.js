@@ -38,6 +38,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SLOZKA_RE = exports.FIRMA_ID_RE = void 0;
 exports.parseCents = parseCents;
+exports.centsToDecimal = centsToDecimal;
 exports.parseInteger = parseInteger;
 exports.icoFromNumber = icoFromNumber;
 exports.icoFromText = icoFromText;
@@ -50,6 +51,8 @@ exports.readDodavatele = readDodavatele;
 exports.readFaktury = readFaktury;
 exports.readFirmaData = readFirmaData;
 exports.readAll = readAll;
+exports.toFakturaVystup = toFakturaVystup;
+exports.toVystup = toVystup;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const dbf_1 = require("../dbf");
@@ -57,6 +60,7 @@ const errors_1 = require("../errors");
 exports.FIRMA_ID_RE = /^\d{4}$/;
 exports.SLOZKA_RE = /^[A-Za-z0-9_-]{1,8}$/;
 const ICO_RE = /^\d{1,8}$/;
+const CASTKA_POLE = ["zaklad0", "zaklad12", "dph12", "zaklad21", "dph21", "celkem"];
 // ---------------------------------------------------------------------------
 // Čisté pomocné funkce (bez I/O)
 // ---------------------------------------------------------------------------
@@ -71,6 +75,13 @@ function parseCents(text, where) {
     if (!Number.isSafeInteger(cents))
         throw new errors_1.VstupniChyba(`Částka je mimo rozsah (${where}).`);
     return m[1] === "-" ? -cents : cents;
+}
+/** Haléře → desetinný text s tečkou a dvěma místy (244057 → "2440.57"). Bez floatu. */
+function centsToDecimal(cents) {
+    if (!Number.isSafeInteger(cents))
+        throw new Error("Částka musí být celé číslo haléřů.");
+    const abs = Math.abs(cents);
+    return `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
 }
 function parseInteger(text, where) {
     if (!/^-?\d{1,15}$/.test(text))
@@ -287,7 +298,7 @@ function readFirmaData(kaktusDir, firmaId) {
     const dir = resolveFirmaDir(kaktusDir, firma);
     return { firma, dodavatele: readDodavatele(dir, firma.id), faktury: readFaktury(dir, firma.id) };
 }
-/** Celý výstup příkazu `cist`: všechny firmy s dodavateli a přijatými fakturami. */
+/** Všechny firmy s dodavateli a přijatými fakturami (částky v haléřích). */
 function readAll(kaktusDir) {
     const firmy = readFirmy(kaktusDir).map((firma) => {
         if (firma.smazano)
@@ -295,5 +306,20 @@ function readAll(kaktusDir) {
         const dir = resolveFirmaDir(kaktusDir, firma);
         return { ...firma, dodavatele: readDodavatele(dir, firma.id), faktury: readFaktury(dir, firma.id) };
     });
-    return { format: 1, firmy };
+    return { firmy };
+}
+function toFakturaVystup(f) {
+    const out = { ...f, kurz: f.kurz === null ? null : f.kurz.toFixed(4) };
+    for (const k of CASTKA_POLE) {
+        const v = f[k];
+        out[k] = v === null ? null : centsToDecimal(v);
+    }
+    return out;
+}
+/** Výstup příkazu `cist` (JSON pro TAXY): částky jako desetinné řetězce, viz `FakturaVystup`. */
+function toVystup(data) {
+    return {
+        format: 2,
+        firmy: data.firmy.map((f) => ({ ...f, faktury: f.faktury === null ? null : f.faktury.map(toFakturaVystup) })),
+    };
 }

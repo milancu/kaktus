@@ -202,9 +202,30 @@ describe("Čtení reálných dat Kaktusu (kopie)", () => {
     assert.equal(await main(["cist", "--kaktus", sb.kaktusDir, "--out", o2], io), 0);
     assert.ok(fs.readFileSync(o1).equals(fs.readFileSync(o2)));
     const parsed = JSON.parse(fs.readFileSync(o1, "utf8")) as { format: number; firmy: { id: string }[] };
-    assert.equal(parsed.format, 1);
+    assert.equal(parsed.format, 2);
     assert.equal(parsed.firmy.length, 2);
     assert.deepEqual(fs.readdirSync(sb.root).filter((n) => n.includes("tmp") && n !== "tmp"), []);
+  });
+
+  it("cist: částky jsou desetinné řetězce v měně dokladu, kurz se 4 místy", async () => {
+    const out = path.join(sb.root, "cist-castky.json");
+    assert.equal(await main(["cist", "--kaktus", sb.kaktusDir, "--out", out], { out: () => {}, err: () => {} }), 0);
+    type Fak = Record<string, unknown> & { doklad: string };
+    const parsed = JSON.parse(fs.readFileSync(out, "utf8")) as { firmy: { faktury: Fak[] | null }[] };
+    const fak = parsed.firmy[0]?.faktury ?? [];
+    const eur = fak.find((x) => x.doklad === "FP260028");
+    assert.deepEqual(
+      [eur?.zaklad0, eur?.zaklad21, eur?.celkem, eur?.mena, eur?.kurz],
+      ["1840.50", "0.00", "1840.50", "EUR", "24.7800"],
+    );
+    const czk = fak.find((x) => x.doklad === "FP260045");
+    assert.deepEqual([czk?.zaklad21, czk?.dph21, czk?.celkem, czk?.kurz], ["3264.46", "685.54", "3950.00", "1.0000"]);
+    for (const x of parsed.firmy.flatMap((f) => f.faktury ?? [])) {
+      for (const k of ["zaklad0", "zaklad12", "dph12", "zaklad21", "dph21", "celkem"]) {
+        const v = x[k];
+        assert.ok(v === null || (typeof v === "string" && /^-?\d+\.\d{2}$/.test(v)), `${x.doklad}.${k} = ${String(v)}`);
+      }
+    }
   });
 });
 

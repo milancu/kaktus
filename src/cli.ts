@@ -9,7 +9,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { PouzitiChyba, VstupniChyba } from "./errors";
 import { assertOutputWritable, writeJsonAtomic } from "./fs-util";
-import { readAll } from "./kaktus/read";
+import { readAll, toVystup } from "./kaktus/read";
 import { loadDoklady, loadKlienti } from "./taxy/input";
 import { zapis } from "./write";
 import type { ZapisReport } from "./write";
@@ -98,7 +98,7 @@ function runCist(args: ParsedArgs, io: Io): number {
   const outFile = path.resolve(args.options.get("out") as string);
   requireDirectory(kaktusDir);
   const data = readAll(kaktusDir);
-  writeJsonAtomic(outFile, data);
+  writeJsonAtomic(outFile, toVystup(data));
   const dodavatelu = data.firmy.reduce((n, f) => n + (f.dodavatele?.length ?? 0), 0);
   const faktur = data.firmy.reduce((n, f) => n + (f.faktury?.length ?? 0), 0);
   io.out(`Načteno: ${data.firmy.length} firem, ${dodavatelu} dodavatelů, ${faktur} přijatých faktur. Výstup: ${outFile}`);

@@ -34,7 +34,7 @@ docs-writer – každý s vlastními pravidly, modelem a effortem).
 
 - Plán původně stavěl na Node 24 a nativním spouštění `.ts`; na to, že zadání uvádí Node 18+,
   jsem upozornil já. Opraveno kompilací do `dist/` (`da0e9e0`).
-- Hned v první odpovědi si AI vyložila můj dotaz tak, že si TAXY pletu s daněmi.
+- Hned v první odpovědi si AI vyložila můj dotaz tak, že si TAXY pletu s daněmi :DD.
 - Výstup čtení měl částky v haléřích jako čísla bez označení jednotky (EUR faktura 2360.00
   vypadala jako 236000); odhaleno až při kontrole výstupu, opraveno (`4ecfb0b`).
 - Deduplikace v první verzi selhala, když IČO chybělo jen na jedné straně, a testy to

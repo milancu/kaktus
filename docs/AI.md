@@ -13,8 +13,9 @@ docs-writer – každý s vlastními pravidly, modelem a effortem).
   (testy, očekávané stavy konkrétních dokladů, idempotentní druhý běh, čistý `git status`).
   Orchestrátor kód nepsal, delegoval na subagenty a po každém kroku commitoval (viz `git log`).
 - **Review:** reviewer našel 1 vysoký, 4 střední a 1 nízký nález (R1–R6), všechny opravené
-  (`57bc470`) s regresními testy (`54cd0ec`); nízké nálezy z re-review jsou v
-  `docs/PRED-NASAZENIM.md`.
+  (`57bc470`) s regresními testy (`54cd0ec`). Druhé review našlo ještě 3 drobnosti: případ, kdy
+  se doklad může zapsat dvakrát, je v `docs/PRED-NASAZENIM.md`; zbylé dva jsou nepřesný text jedné
+  hlášky a vzácný případ, kdy u smazaného dokladu záleží na pořadí dokladů ve vstupu.
 - **Nezávislé ověření a úprava (session 1):** AI zopakovala běh na kopii dat (zamčená firma →
   `neprovedeno` a doběhnutí po odemčení, žádné duplicity v DBF, uložení speciálních znaků)
   a přímo v této session změnila formát částek ve výstupu čtení (`4ecfb0b`).

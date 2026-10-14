@@ -1,22 +1,44 @@
 # Před nasazením do produkce
 
-Co se nevešlo do 3hodinového rozsahu úkolu. Orchestrátor sem během práce doplňoval, co
-vypadlo z plánu.
+Co se do rozsahu úkolu nevešlo, seřazené podle důležitosti.
 
-- Ověřit na skutečném `KAKTUS.EXE` a reálných datech (kódování, chování zámku, limit dávky, exit kódy).
-- Vlastní zámek proti souběžnému běhu konektoru nad stejnou firmou (číslování `FP26nnnn` má race).
-- Záloha DBF před importem a postup obnovy; detekce poškozeného DBF po výpadku proudu.
-- Čtení DBF, zatímco do něj Kaktus zapisuje (sharing violation na Windows) – retry s backoffem.
-- Otevřené účetní období zjistit dopředu (kde ho Kaktus drží) místo spoléhání na E220.
-- Politika pro smazané doklady se stejným číslem a pro varování (ořez, transliterace) – má je schválit účetní?
-- Kontrolní součet IČO (mod 11), validace DIČ, kontrola plátce DPH u dodavatele.
-- Hlášení výsledků zpět na server TAXY včetně stavu „nedokončeno“ a automatický retry.
-- Telemetrie a monitoring napříč stovkami kanceláří; verzování modulu a detekce verze Kaktusu.
-- Velká data (tisíce faktur – DBF se přepisuje celý při každém appendu), výkon a timeouty.
-- Další typy dokladů (vydané faktury), dobropisy (záporné částky), zaokrouhlení jako samostatná položka.
-- Záložní dedup podle `CISLODOD` porovnává po ořezu na 20 znaků – dvě čísla dokladu lišící se až za 20. znakem se tváří jako duplicita (doklad má varování o ořezu). Řešit s TAXY (delší pole jinde v Kaktusu?).
-- Nízké nálezy z re-review (nevešly se do rozpočtu):
-  - Dva doklady se stejným číslem ve stejné dávce, jeden s IČO a novým názvem, druhý bez IČO se starým názvem partnera v Kaktusu → zapíšou se oba (výsledek závisí na rozdělení do dávek). Návrh: doklady se stejným číslem dokladu dodavatele nedávat do jedné dávky.
-  - Stejný dodavatel + číslo, kde jeden doklad má smazanou značku `TAXY:` v Kaktusu: výsledek závisí na pořadí ve vstupu. Návrh: předpočítat „konečně odmítnuté“ dvojice dodavatel+číslo před plánováním.
-  - Text důvodu „Nečekaná chyba po spuštění importu“ i u chyb před spuštěním importu (stav `neprovedeno` je správně).
-- Shoda dodavatele „s IČO / bez IČO podle názvu“ není tranzitivní – při zápisu dokladu bez IČO mohou být doklady dvou různých IČO se stejným názvem a číslem odmítnuty jako duplicita (raději nezapsat než zapsat dvakrát). Ověřit s TAXY.
+## Nutné před prvním nasazením
+
+1. **Ověřit na skutečném `KAKTUS.EXE`** a reálných datech: kódování, zámek firmy, limit 20 dokladů,
+   exit kódy. Celé řešení stojí na tom, že se simulátor chová jako skutečný program.
+2. **Zabránit dvěma konektorům nad stejnou firmou zároveň.** Oba by si spočítaly stejné další číslo
+   dokladu `FP26nnnn` a mohly by si navzájem přepsat zápis.
+3. **Zálohovat DBF před importem** a po výpadku proudu umět poznat poškozený soubor.
+4. **Hlásit výsledek na server TAXY** včetně stavu „nedokončeno“ a takové doklady automaticky
+   zkusit znovu.
+
+## Brzy potom
+
+5. Když má Kaktus DBF zrovna otevřený a Windows ho nedovolí přečíst, zkusit to za chvíli znovu.
+6. Zjistit otevřené účetní období z Kaktusu dopředu, ne až z chyby E220.
+7. Domluvit s TAXY, jestli má varování (oříznutý text, nahrazený znak, smazaný doklad se stejným
+   číslem) schvalovat účetní.
+8. Sledovat, jak konektor běží u všech kanceláří, a poznat, jakou verzi Kaktusu kancelář má.
+
+## Rozšíření
+
+- Vydané faktury, dobropisy (záporné částky), zaokrouhlení jako samostatná položka.
+- Kontrola překlepu v IČO (poslední číslice je kontrolní), kontrola DIČ a toho, jestli je dodavatel
+  plátce DPH.
+- Výkon u velkých firem: Kaktus při každém zapsaném dokladu přepisuje celý DBF soubor.
+
+## Známé drobné chyby
+
+Vzácné okrajové případy, které se nevešly do času. U všech kromě prvního program raději doklad
+nezapíše, než aby ho zapsal dvakrát.
+
+- Dva doklady se stejným číslem ve stejné dávce, jeden s IČO a novým názvem dodavatele, druhý bez
+  IČO se starým názvem: zapíšou se oba. Oprava: doklady se stejným číslem nedávat do jedné dávky.
+- Čísla dokladů, která se liší až za 20. znakem, program bere jako stejná (Kaktus číslo ořízne na
+  20 znaků). Druhý se nezapíše, v reportu je varování.
+- Dva různí dodavatelé se stejným názvem a stejným číslem faktury, z nichž jeden nemá IČO: program je
+  bere jako duplicitu a druhou fakturu nezapíše.
+- Když má doklad stejného dodavatele a číslo jako náš doklad, který účetní smazala, výsledek záleží
+  na pořadí dokladů ve vstupu.
+- Hláška „Nečekaná chyba po spuštění importu“ se ukáže i u chyby, která nastala před spuštěním
+  importu. Stav dokladu je správně.

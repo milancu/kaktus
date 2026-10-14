@@ -95,7 +95,7 @@ Průběžně doplňováno; podklad pro README.
 - **Smazaný doklad.** Dva případy se záměrně liší:
   - *Smazaný záznam s naší značkou `TAXY:<id>`* znamená „doručeno a účetní v Kaktusu smazala“.
     Doklad se **nezapisuje znovu**: stav `odmitnuto` s důvodem „Doklad byl už zapsán (FPxxxx)
-    a v Kaktusu smazán – znovu ho nezapisujeme, rozhodne účetní.“ (zvolena bezpečnější varianta;
+    a v Kaktusu smazán – znovu ho nezapisujeme, rozhodne účetní.“ (zvolena bezpečnější varianta, potvrzená zadavatelem úkolu;
     opětovný zápis by oživil doklad, který někdo úmyslně smazal, při každém běhu by se to opakovalo).
     Pokud existuje nesmazaný záznam se stejnou značkou, má přednost (`jiz_zapsano`). Další výskyt
     téhož dodavatele a čísla ve vstupu se pak odmítne jako duplicita (bez pokusu o zápis).

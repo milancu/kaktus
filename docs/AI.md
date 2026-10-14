@@ -27,6 +27,8 @@ docs-writer – každý s vlastními pravidly, modelem a effortem).
   funguje teď a jak má fungovat.
 - Výsledek orchestrátora jsem nechal nezávisle přezkoušet v první session, mimo orchestrátora
   (testy, celý běh zápisu, zamčená firma, duplicity).
+- Bezpečnostní ochrany (IDOR, XML injection, XXE, path traversal, command injection) jsem si prošel
+  a vyzkoušel na ukázkovém skriptu.
 
 ## Kde se AI spletla
 

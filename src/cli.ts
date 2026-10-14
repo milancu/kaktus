@@ -10,6 +10,9 @@ import * as path from "node:path";
 import { PouzitiChyba, VstupniChyba } from "./errors";
 import { writeJsonAtomic } from "./fs-util";
 import { readAll } from "./kaktus/read";
+import { loadDoklady, loadKlienti } from "./taxy/input";
+import { zapis } from "./write";
+import type { ZapisReport } from "./write";
 
 export interface Io {
   out(text: string): void;
@@ -102,20 +105,48 @@ function runCist(args: ParsedArgs, io: Io): number {
   return 0;
 }
 
-function runZapis(_args: ParsedArgs, io: Io): number {
-  io.err("Příkaz zapis zatím není implementován.");
-  return 1;
+/** Krátké české shrnutí běhu (bez dat dokladů). */
+export function shrnuti(report: ZapisReport): string[] {
+  const p = report.souhrn.pocty;
+  const lines: string[] = [];
+  if (report.rezim === "dry-run") {
+    lines.push(
+      `Zkušební běh (nic se nezapsalo): ${report.souhrn.celkem} dokladů, k zápisu ${p.k_zapisu}, již zapsáno ${p.jiz_zapsano}, odmítnuto ${p.odmitnuto}.`,
+    );
+  } else {
+    lines.push(
+      `Zpracováno ${report.souhrn.celkem} dokladů: zapsáno ${p.zapsano}, již zapsáno ${p.jiz_zapsano}, odmítnuto ${p.odmitnuto}, chyba Kaktusu ${p.chyba_kaktusu}, neprovedeno ${p.neprovedeno}.`,
+    );
+  }
+  for (const [firma, f] of Object.entries(report.souhrn.firmy)) {
+    if (f.preruseno !== undefined) lines.push(`Firma ${firma} přerušena: ${f.preruseno}`);
+  }
+  if (p.neprovedeno > 0) lines.push("Část dokladů nebyla zpracována; spuštění lze bezpečně zopakovat.");
+  return lines;
+}
+
+async function runZapis(args: ParsedArgs, io: Io): Promise<number> {
+  const kaktusDir = path.resolve(args.options.get("kaktus") as string);
+  const outFile = path.resolve(args.options.get("out") as string);
+  requireDirectory(kaktusDir);
+  const klienti = loadKlienti(path.resolve(args.options.get("klienti") as string));
+  const doklady = loadDoklady(path.resolve(args.options.get("doklady") as string));
+  const report = await zapis({ kaktusDir, klienti, doklady, dryRun: args.flags.has("dry-run") });
+  writeJsonAtomic(outFile, report);
+  for (const l of shrnuti(report)) io.out(l);
+  io.out(`Report: ${outFile}`);
+  return report.souhrn.pocty.neprovedeno > 0 ? 2 : 0;
 }
 
 /** Spustí CLI, vrací exit kód (nevolá process.exit, aby šlo testovat). */
-export function main(argv: readonly string[], io: Io = defaultIo): number {
+export async function main(argv: readonly string[], io: Io = defaultIo): Promise<number> {
   try {
     if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) {
       io.out(USAGE);
       return 0;
     }
     const args = parseArgs(argv);
-    return args.command === "cist" ? runCist(args, io) : runZapis(args, io);
+    return args.command === "cist" ? runCist(args, io) : await runZapis(args, io);
   } catch (e) {
     if (e instanceof VstupniChyba) {
       io.err(e.message);
@@ -128,5 +159,7 @@ export function main(argv: readonly string[], io: Io = defaultIo): number {
 }
 
 if (require.main === module) {
-  process.exitCode = main(process.argv.slice(2));
+  void main(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
+  });
 }

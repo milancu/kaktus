@@ -5,6 +5,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.decodeCp852 = decodeCp852;
 exports.encodeWin1250 = encodeWin1250;
+exports.decodeWin1250 = decodeWin1250;
 exports.isXmlChar = isXmlChar;
 exports.sanitizeField = sanitizeField;
 // Horní polovina CP852 (bajty 0x80–0xFF), ověřeno proti simulátoru i tabulce IBM 852.
@@ -73,6 +74,18 @@ function encodeWin1250(text) {
             bytes.push(WIN1250_BYTE.get(ch) ?? 0x3f);
     }
     return Buffer.from(bytes);
+}
+/**
+ * Dekóduje bajty ve Win-1250 (kódování odpovědi Kaktusu). Bajt, který ve Win-1250 není definován,
+ * se převede na U+FFFD.
+ */
+function decodeWin1250(bytes) {
+    let out = "";
+    for (let i = 0; i < bytes.length; i++) {
+        const b = bytes[i];
+        out += b < 0x80 ? String.fromCharCode(b) : WIN1250_HIGH.charAt(b - 0x80);
+    }
+    return out;
 }
 /** Je znak povolený v XML 1.0 (`Char`)? Zbylé řídicí znaky, nepárové surrogáty, U+FFFE/U+FFFF ne. */
 function isXmlChar(cp) {

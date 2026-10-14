@@ -73,6 +73,19 @@ export function encodeWin1250(text: string): Buffer {
   return Buffer.from(bytes);
 }
 
+/**
+ * Dekóduje bajty ve Win-1250 (kódování odpovědi Kaktusu). Bajt, který ve Win-1250 není definován,
+ * se převede na U+FFFD.
+ */
+export function decodeWin1250(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i] as number;
+    out += b < 0x80 ? String.fromCharCode(b) : WIN1250_HIGH.charAt(b - 0x80);
+  }
+  return out;
+}
+
 /** Je znak povolený v XML 1.0 (`Char`)? Zbylé řídicí znaky, nepárové surrogáty, U+FFFE/U+FFFF ne. */
 export function isXmlChar(cp: number): boolean {
   return (

@@ -93,3 +93,53 @@ Průběžně doplňováno; podklad pro README.
   (simulátor ho v odpovědi číslem od 1 odvozuje z pozice). Volitelné prvky bez hodnoty se
   vynechají (`Stat` prázdný → Kaktus doplní `CZ`).
 - **Varování „dodavatel bez DIČ účtuje DPH“** vzniká při prázdném DIČ a nenulové DPH 12 % nebo 21 %.
+
+## Zápis: import, ověření podle DBF, report
+
+- **Import** běží přes `execFile(process.execPath, [kaktus.cjs, "import", dávka, odpověď])`: pole
+  argumentů, `shell: false`, `windowsHide`, timeout 60 s. `kaktus.cjs` se hledá ve složce zadané
+  `--kaktus`; chybí-li, je to chyba vstupu (exit 1) ještě před jakýmkoli zápisem. Spouštěč je
+  vyměnitelný (`ZapisOpts.runner`), výjimka z něj se bere jako pád importu.
+- **Dočasné soubory:** každá dávka má nový `fs.mkdtemp(<tmp>/taxy-kaktus-)`; dávka i odpověď jsou
+  v něm, adresář se smaže v `finally`. Odpověď se nikdy nečte odjinud.
+- **Exit kódy importu:** 0 zpracováno, 2 dávka nečitelná (nic nezapsáno), 3 firma zamčená, 4 firma
+  neexistuje, vše ostatní včetně timeoutu = pád. Každé selhání vede u nepotvrzených dokladů na
+  `neprovedeno` a **zastaví další dávky téže firmy** (stav firmy je nejistý; ostatní firmy se
+  zpracují dál). V reportu je důvod u firmy jako `preruseno`.
+- **Předběžná kontrola `FIRMA.LCK`** před sestavením dávky. Zámek vzniklý až po ní zachytí exit 3
+  (Kaktus zámek kontroluje jen na začátku importu).
+- **Pravda je DBF.** Po každé dávce (i po pádu nebo bez odpovědi) se firma načte znovu a každý
+  doklad se určí podle nesmazaného záznamu s `TAXY:<id>`: nalezen = `zapsano` (číslo dokladu z DBF);
+  nenalezen + odpověď s kódem `Ennn` = `chyba_kaktusu` (kód a text z odpovědi); jinak `neprovedeno`.
+  Rozpor odpovědi s DBF (odpověď hlásí chybu, ale doklad v DBF je; jiné číslo dokladu) je varování
+  u dokladu. Odpověď „OK“, ale v DBF nic = `neprovedeno` + varování (nikdy `zapsano` bez důkazu).
+- **Doklad bez výsledku v odpovědi** (chybí `Doklad`, odpověď nečitelná nebo neexistuje) a bez zápisu
+  v DBF je `neprovedeno`, i když import skončil exit 0; další dávky téže firmy se pak nezkouší.
+  Při dalším běhu se doklad zkusí znovu (je to bezpečné, dedup ho nezapíše dvakrát).
+- **Přeplánování mezi dávkami.** Před každou dávkou (max. 20 dokladů) se data firmy načtou znovu
+  a dávka projde znovu `planWrite` (autorizace, dedup podle značky i čísla). Co se mezitím objevilo
+  v Kaktusu, se nezapisuje.
+- **`chyba_kaktusu` se při každém běhu zkouší znovu** (např. DUZP 2025 / E220), protože v DBF po
+  sobě nic nenechá a vstup se může opravit. Exit je přesto 0 (je to definitivní odpověď Kaktusu).
+- **Parser odpovědi** odmítá `<!DOCTYPE`/`<!ENTITY`, komentáře, CDATA, processing instructions mimo
+  úvodní deklaraci, neznámé elementy, text mimo elementy, `&` mimo pět entit a platné číselné
+  odkazy, duplicitní atributy, `poradi` mimo 1..počet dávky nebo duplicitní, jinou `firma` než ta,
+  do které se importovalo, a odpověď nad 1 MiB. Neznámé atributy ignoruje. Kódování podle
+  deklarace (Win-1250, jak píše simulátor; UTF-8 také). Chyba parseru = odpověď se nepoužije,
+  rozhodne DBF.
+- **Načtení dat firem před plánem:** jen firmy, na které odkazuje `klienti.json` a které jsou ve
+  `FIRMY.DBF` nesmazané. Neexistující/smazaná firma se do plánu nedostane (doklady `odmitnuto`).
+  Nečitelná data existující firmy = exit 1 před zápisem (poškozená firma se nesmí tvářit jako
+  „neexistující“ a tím doklady odmítnout).
+- **Nečekaná výjimka uvnitř jedné firmy** se zachytí: její nezpracované doklady jsou `neprovedeno`,
+  report se přesto zapíše a ostatní firmy se zpracují.
+- **Report** (`format: 1`) je bez časového razítka (deterministický, bajtově shodný při stejných
+  datech): `rezim` (`zapis`/`dry-run`), `souhrn` (celkem, počty podle stavů, po firmách včetně
+  `preruseno`) a `doklady[]` v pořadí vstupu s klíči `id, klientId, firma, stav, kaktusDoklad?,
+  kod?, duvod?, varovani[]`. Obsahuje jen identifikátory, stavy a texty hlášek, nikdy bankovní účty
+  ani celé doklady. V `--dry-run` mají doklady k zápisu stav `k_zapisu`; nic se nespouští ani
+  nezapisuje (nevyžaduje ani `kaktus.cjs`).
+- **Exit kódy `zapis`:** 0 vše zpracováno (i s `odmitnuto` a `chyba_kaktusu`), 1 chybný vstup nebo
+  konfigurace, 2 něco `neprovedeno`. Report se zapíše i při exit 2.
+- `main()` v `cli.ts` je od teď asynchronní (`Promise<number>`), protože import běží přes
+  asynchronní `execFile`.

@@ -40,12 +40,15 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseArgs = parseArgs;
+exports.shrnuti = shrnuti;
 exports.main = main;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const errors_1 = require("./errors");
 const fs_util_1 = require("./fs-util");
 const read_1 = require("./kaktus/read");
+const input_1 = require("./taxy/input");
+const write_1 = require("./write");
 const defaultIo = {
     out: (t) => console.log(t),
     err: (t) => console.error(t),
@@ -122,19 +125,46 @@ function runCist(args, io) {
     io.out(`Načteno: ${data.firmy.length} firem, ${dodavatelu} dodavatelů, ${faktur} přijatých faktur. Výstup: ${outFile}`);
     return 0;
 }
-function runZapis(_args, io) {
-    io.err("Příkaz zapis zatím není implementován.");
-    return 1;
+/** Krátké české shrnutí běhu (bez dat dokladů). */
+function shrnuti(report) {
+    const p = report.souhrn.pocty;
+    const lines = [];
+    if (report.rezim === "dry-run") {
+        lines.push(`Zkušební běh (nic se nezapsalo): ${report.souhrn.celkem} dokladů, k zápisu ${p.k_zapisu}, již zapsáno ${p.jiz_zapsano}, odmítnuto ${p.odmitnuto}.`);
+    }
+    else {
+        lines.push(`Zpracováno ${report.souhrn.celkem} dokladů: zapsáno ${p.zapsano}, již zapsáno ${p.jiz_zapsano}, odmítnuto ${p.odmitnuto}, chyba Kaktusu ${p.chyba_kaktusu}, neprovedeno ${p.neprovedeno}.`);
+    }
+    for (const [firma, f] of Object.entries(report.souhrn.firmy)) {
+        if (f.preruseno !== undefined)
+            lines.push(`Firma ${firma} přerušena: ${f.preruseno}`);
+    }
+    if (p.neprovedeno > 0)
+        lines.push("Část dokladů nebyla zpracována; spuštění lze bezpečně zopakovat.");
+    return lines;
+}
+async function runZapis(args, io) {
+    const kaktusDir = path.resolve(args.options.get("kaktus"));
+    const outFile = path.resolve(args.options.get("out"));
+    requireDirectory(kaktusDir);
+    const klienti = (0, input_1.loadKlienti)(path.resolve(args.options.get("klienti")));
+    const doklady = (0, input_1.loadDoklady)(path.resolve(args.options.get("doklady")));
+    const report = await (0, write_1.zapis)({ kaktusDir, klienti, doklady, dryRun: args.flags.has("dry-run") });
+    (0, fs_util_1.writeJsonAtomic)(outFile, report);
+    for (const l of shrnuti(report))
+        io.out(l);
+    io.out(`Report: ${outFile}`);
+    return report.souhrn.pocty.neprovedeno > 0 ? 2 : 0;
 }
 /** Spustí CLI, vrací exit kód (nevolá process.exit, aby šlo testovat). */
-function main(argv, io = defaultIo) {
+async function main(argv, io = defaultIo) {
     try {
         if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) {
             io.out(USAGE);
             return 0;
         }
         const args = parseArgs(argv);
-        return args.command === "cist" ? runCist(args, io) : runZapis(args, io);
+        return args.command === "cist" ? runCist(args, io) : await runZapis(args, io);
     }
     catch (e) {
         if (e instanceof errors_1.VstupniChyba) {
@@ -148,5 +178,7 @@ function main(argv, io = defaultIo) {
     }
 }
 if (require.main === module) {
-    process.exitCode = main(process.argv.slice(2));
+    void main(process.argv.slice(2)).then((code) => {
+        process.exitCode = code;
+    });
 }

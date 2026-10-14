@@ -1,10 +1,10 @@
 # Kaktus konektor pro TAXY
 
-Modul TAXY Connectoru: čtení dodavatelů a přijatých faktur z DBF a zápis faktur z TAXY přes XML dávku. TypeScript, bez runtime závislostí.
+Modul TAXY Connectoru: čte dodavatele a přijaté faktury z DBF Kaktusu a zapisuje faktury z TAXY přes XML dávku. TypeScript, bez dalších knihoven.
 
 ## Spuštění
 
-Node 18+. Složka `dist/` je commitnutá, takže jde spustit rovnou; `npm run build` ji přeloží znovu.
+Node 18+. Přeložený kód v `dist/` je v repozitáři, instalace není potřeba.
 
 ```
 node dist/cli.js cist  --kaktus ./kaktus --out out/kaktus-data.json
@@ -13,35 +13,35 @@ node dist/cli.js zapis --kaktus ./kaktus --klienti taxy/klienti.json \
 npm test
 ```
 
-Exit kódy: 0 zpracováno (i s odmítnutými doklady), 1 chybný vstup, 2 nedokončeno (zamčená firma, pád importu). Po kódu 2 je bezpečné příkaz spustit znovu.
+Exit kódy: 0 zpracováno (i s odmítnutými doklady), 1 chybný vstup, 2 nedokončeno (firma otevřená u účetní, pád importu). Po kódu 2 stačí příkaz zopakovat, nic se nezapíše dvakrát.
 
 ## Co umí
 
-- Čte DBF přísně (CP852, smazané záznamy, IČO doplněné na 8 číslic).
-- Zapisuje po dávkách max. 20 dokladů. Před zápisem ověří autorizaci a deduplikuje.
-- Po každé dávce znovu čte FAKPRI. Stav dokladu určuje podle `TAXY:<id>` v poznámce, ne podle odpovědi.
-- Report má stavy `zapsano`, `jiz_zapsano`, `odmitnuto`, `chyba_kaktusu`, `neprovedeno` a varování.
+- Čte DBF v CP852 včetně smazaných záznamů. Když soubor nemá očekávaný formát, skončí chybou místo hádání.
+- Ověří, že doklad patří dané firmě a že v Kaktusu ještě není.
+- Zapisuje po dávkách nejvýš 20 dokladů se značkou `TAXY:<id>` v poznámce. Podle ní pak v DBF ověří, co se opravdu zapsalo.
+- Report uvádí u dokladů stav, důvod a varování.
 
-Neumí: vydané faktury, dobropisy, vlastní zámek proti souběžnému běhu, zálohu DBF.
+Neumí vydané faktury ani dobropisy.
 
-## Co jsme zjistili o Kaktusu
+## Co jsem zjistil o Kaktusu
 
-Četli jsme kód simulátoru. Příručka se mýlí:
-- DBF jsou v CP852, dávka se čte jako Win-1250.
-- Import zpracuje jen prvních 20 dokladů, zbytek tiše zahodí.
-- Neřeší duplicity.
-- Tiše ořezává texty a nereprezentovatelné znaky mění na `?`.
-- Zámek kontroluje jen na začátku.
-- Zápis není atomický a odpověď vzniká až na konci.
-- Samotné `&` v dávce shodí celý import.
+Minifikovaný kód simulátoru jsem prošel s pomocí AI. Od příručky se liší:
+- DBF jsou v CP852, ne ve Windows-1250; dávku čte jako Windows-1250.
+- Zpracuje jen prvních 20 dokladů, o ostatních v odpovědi nic není.
+- Duplicity nekontroluje.
+- Dlouhé texty bez upozornění ořízne a neznámé znaky (`→`) uloží jako `?`.
+- IČO ukládá jako číslo, takže ztrácí úvodní nuly.
+- Odpověď vzniká až na konci, po pádu může být zapsaná jen část dávky.
+- Samotný znak `&` shodí celou dávku.
 
 ## Rozhodnutí za TAXY
 
 Podrobně v [docs/ROZHODNUTI.md](docs/ROZHODNUTI.md). Hlavní:
-- Firma se bere jen z `klienti.json`. Nesoulad IČO (doklad, klient, `FIRMY.DBF`) doklad odmítne.
-- Smazaný doklad s naší značkou se znovu nezapisuje, rozhodne účetní. Smazaný ruční doklad duplicita není (zapíše se s varováním).
-- Ořezy a transliterace děláme sami a hlásíme je jako varování.
-- Rok (E220) a součet (E210) kontroluje Kaktus, kód jen mapujeme do reportu.
+- Firmu určuje jen `klienti.json`. Když nesedí IČO na dokladu, u klienta a ve `FIRMY.DBF`, doklad se odmítne.
+- Náš doklad, který účetní smazala, se znovu nezapisuje. Smazaný ruční doklad duplicita není.
+- Ořezy a náhrady znaků (`→` na `->`) dělá konektor sám a hlásí je jako varování.
+- Otevřený rok (E220) a součet částek (E210) hlídá Kaktus, jeho kód jde do reportu.
 
 ## Výsledek běhu
 
@@ -51,10 +51,9 @@ Z 37 dokladů: 29 zapsáno, 3 již zapsáno, 4 odmítnuto, 1 chyba E220 (`out/za
 
 Úplně v [docs/PRED-NASAZENIM.md](docs/PRED-NASAZENIM.md). Nejdůležitější:
 1. Ověřit na skutečném `KAKTUS.EXE`.
-2. Zámek proti souběžnému běhu (číslování `FP26nnnn` má race).
-3. Záloha DBF a detekce poškození po výpadku proudu.
-4. Retry při čtení DBF otevřeného Kaktusem.
-5. Hlášení stavu „nedokončeno“ na server TAXY.
+2. Zabránit dvěma konektorům nad stejnou firmou zároveň: přidělily by si stejné číslo dokladu.
+3. Zálohovat DBF před importem.
+4. Hlásit „nedokončeno“ na server TAXY.
 
 ## Práce s AI
 

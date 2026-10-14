@@ -13,6 +13,12 @@
 
 Zjistit otevřené účetní období z Kaktusu dopředu, ne až z chyby E220.
 
+## Drobná vylepšení
+
+- Kontrola IČO: poslední číslice je kontrolní, takže jde poznat překlep.
+- Kontrola formátu DIČ.
+- Ověření, jestli je dodavatel plátce DPH (teď je jen varování, když dodavatel bez DIČ účtuje DPH).
+
 ## Neošetřený případ
 
 Dva doklady se stejným číslem ve stejné dávce, jeden s IČO a novým názvem dodavatele, druhý bez

@@ -17,7 +17,7 @@ Exit kódy: 0 zpracováno (i s odmítnutými doklady), 1 chybný vstup, 2 nedoko
 
 ## Co umí
 
-- Čte DBF v CP852 včetně smazaných záznamů. Když soubor nemá očekávaný formát, skončí chybou místo hádání.
+- Čte DBF v CP852 včetně smazaných záznamů. Když soubor nemá očekávaný formát, skončí chybou.
 - Ověří, že doklad patří dané firmě a že v Kaktusu ještě není.
 - Zapisuje po dávkách nejvýš 20 dokladů se značkou `TAXY:<id>` v poznámce. Podle ní pak v DBF ověří, co se opravdu zapsalo.
 - Report uvádí u dokladů stav, důvod a varování.

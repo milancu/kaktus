@@ -2,9 +2,7 @@
 
 ## Nutné
 
-1. **Ověřit na skutečném `KAKTUS.EXE`** a reálných datech. Celé řešení stojí na tom, že se
-   simulátor chová jako skutečný program. Mimo jiné zjistit, jestli Kaktus nebrání čtení DBF,
-   když ho má účetní otevřený.
+1. **Ověřit na skutečném `KAKTUS.EXE`** a reálných datech.
 2. **Zabránit dvěma konektorům nad stejnou firmou zároveň.** Oba by si spočítaly stejné další číslo
    dokladu a mohly by si navzájem přepsat zápis.
 3. **Zálohovat DBF před importem** a po výpadku proudu umět poznat poškozený soubor.

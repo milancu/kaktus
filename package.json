@@ -1,0 +1,20 @@
+{
+  "name": "taxy-kaktus-konektor",
+  "version": "1.0.0",
+  "description": "Modul TAXY Connectoru pro účetní program Kaktus (čtení DBF, zápis přes XML import)",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
+    "test": "npm run build && npm run build:test && node scripts/run-tests.js"
+  },
+  "devDependencies": {
+    "@types/node": "18.19.130",
+    "typescript": "5.9.3"
+  }
+}

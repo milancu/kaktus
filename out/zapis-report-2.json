@@ -1,0 +1,347 @@
+{
+  "format": 1,
+  "rezim": "zapis",
+  "souhrn": {
+    "celkem": 37,
+    "pocty": {
+      "zapsano": 0,
+      "jiz_zapsano": 32,
+      "odmitnuto": 4,
+      "chyba_kaktusu": 1,
+      "neprovedeno": 0,
+      "k_zapisu": 0
+    },
+    "firmy": {
+      "0001": {
+        "pocty": {
+          "zapsano": 0,
+          "jiz_zapsano": 26,
+          "odmitnuto": 2,
+          "chyba_kaktusu": 1,
+          "neprovedeno": 0,
+          "k_zapisu": 0
+        }
+      },
+      "0002": {
+        "pocty": {
+          "zapsano": 0,
+          "jiz_zapsano": 6,
+          "odmitnuto": 0,
+          "chyba_kaktusu": 0,
+          "neprovedeno": 0,
+          "k_zapisu": 0
+        }
+      }
+    }
+  },
+  "doklady": [
+    {
+      "id": "doc_b0e22b273a",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260047",
+      "varovani": []
+    },
+    {
+      "id": "doc_e3fc203569",
+      "klientId": 4180,
+      "firma": "0002",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260015",
+      "varovani": []
+    },
+    {
+      "id": "doc_49aa18c650",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260048",
+      "varovani": []
+    },
+    {
+      "id": "doc_70e0c21753",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260049",
+      "varovani": []
+    },
+    {
+      "id": "doc_c36efaf63f",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260045",
+      "varovani": [
+        "Doklad už v Kaktusu je (FP260045, shoda podle čísla dokladu dodavatele a dodavatele, ne podle značky TAXY)."
+      ]
+    },
+    {
+      "id": "doc_3c0d1615f6",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260050",
+      "varovani": []
+    },
+    {
+      "id": "doc_d38c9d950c",
+      "klientId": 5033,
+      "firma": null,
+      "stav": "odmitnuto",
+      "duvod": "Klient 5033 není v seznamu klientů.",
+      "varovani": []
+    },
+    {
+      "id": "doc_39ad40f7b2",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260051",
+      "varovani": []
+    },
+    {
+      "id": "doc_5b2db4a6e2",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260052",
+      "varovani": []
+    },
+    {
+      "id": "doc_1b3b94b6a4",
+      "klientId": 4180,
+      "firma": "0002",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260016",
+      "varovani": []
+    },
+    {
+      "id": "doc_846133b7f9",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "chyba_kaktusu",
+      "kod": "E220",
+      "duvod": "Datum zdanitelného plnění je mimo otevřené účetní období 2026",
+      "varovani": []
+    },
+    {
+      "id": "doc_61ed535421",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260053",
+      "varovani": []
+    },
+    {
+      "id": "doc_00d80d05f4",
+      "klientId": 4172,
+      "firma": null,
+      "stav": "odmitnuto",
+      "duvod": "IČO odběratele na dokladu se neshoduje s IČO klienta 4172; doklad nepatří této firmě.",
+      "varovani": []
+    },
+    {
+      "id": "doc_fd3f74cd5a",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260054",
+      "varovani": [
+        "Název dodavatele: ořezáno z 63 na 40 znaků.",
+        "Text dokladu: znaky, které Kaktus neumí uložit, nahrazeny („→“ za „->“)."
+      ]
+    },
+    {
+      "id": "doc_a88ae33500",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "odmitnuto",
+      "duvod": "Duplicita ve vstupu: stejný dodavatel a číslo dokladu jako doklad doc_3c0d1615f6, který je v Kaktusu jako FP260050.",
+      "varovani": []
+    },
+    {
+      "id": "doc_00a5091cef",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260042",
+      "varovani": [
+        "Doklad už v Kaktusu je (FP260042, shoda podle čísla dokladu dodavatele a dodavatele, ne podle značky TAXY)."
+      ]
+    },
+    {
+      "id": "doc_8c35263c12",
+      "klientId": 4180,
+      "firma": "0002",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260017",
+      "varovani": []
+    },
+    {
+      "id": "doc_d7f54637a1",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260055",
+      "varovani": []
+    },
+    {
+      "id": "doc_340661d8d9",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "odmitnuto",
+      "duvod": "Pole „cisloDokladu“ chybí nebo je prázdné.",
+      "varovani": []
+    },
+    {
+      "id": "doc_6f5274c9fa",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260056",
+      "varovani": []
+    },
+    {
+      "id": "doc_fe23b26c35",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260057",
+      "varovani": []
+    },
+    {
+      "id": "doc_fb9210fb46",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260058",
+      "varovani": []
+    },
+    {
+      "id": "doc_fd03b52d28",
+      "klientId": 4180,
+      "firma": "0002",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260012",
+      "varovani": [
+        "Doklad už v Kaktusu je (FP260012, shoda podle čísla dokladu dodavatele a dodavatele, ne podle značky TAXY)."
+      ]
+    },
+    {
+      "id": "doc_c34d189eac",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260059",
+      "varovani": []
+    },
+    {
+      "id": "doc_dc39d3bb48",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260060",
+      "varovani": []
+    },
+    {
+      "id": "doc_7c27eb8a9e",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260061",
+      "varovani": []
+    },
+    {
+      "id": "doc_ace9251a46",
+      "klientId": 4180,
+      "firma": "0002",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260018",
+      "varovani": []
+    },
+    {
+      "id": "doc_33af52a1d5",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260062",
+      "varovani": []
+    },
+    {
+      "id": "doc_86bc621124",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260063",
+      "varovani": []
+    },
+    {
+      "id": "doc_f20a25dc8e",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260064",
+      "varovani": []
+    },
+    {
+      "id": "doc_b08ed331f9",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260065",
+      "varovani": []
+    },
+    {
+      "id": "doc_f401f9f1b4",
+      "klientId": 4180,
+      "firma": "0002",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260019",
+      "varovani": []
+    },
+    {
+      "id": "doc_6e9c99af61",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260066",
+      "varovani": []
+    },
+    {
+      "id": "doc_3e3fb059af",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260067",
+      "varovani": []
+    },
+    {
+      "id": "doc_8c8a7f4e87",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260068",
+      "varovani": [
+        "Dodavatel nemá DIČ, ale doklad účtuje DPH."
+      ]
+    },
+    {
+      "id": "doc_faa7cb724c",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260069",
+      "varovani": []
+    },
+    {
+      "id": "doc_4550338e80",
+      "klientId": 4172,
+      "firma": "0001",
+      "stav": "jiz_zapsano",
+      "kaktusDoklad": "FP260070",
+      "varovani": []
+    }
+  ]
+}

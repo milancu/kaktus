@@ -1,0 +1,3 @@
+# Původní balíček držet bajtově přesně (DBF binární, CP852/Win-1250 texty)
+kaktus/** -text
+*.DBF binary

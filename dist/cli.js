@@ -147,10 +147,28 @@ async function runZapis(args, io) {
     const kaktusDir = path.resolve(args.options.get("kaktus"));
     const outFile = path.resolve(args.options.get("out"));
     requireDirectory(kaktusDir);
+    // Cíl reportu se ověří PŘED jakýmkoli zápisem do Kaktusu (po importu už by nešlo nic vrátit).
+    (0, fs_util_1.assertOutputWritable)(outFile);
     const klienti = (0, input_1.loadKlienti)(path.resolve(args.options.get("klienti")));
     const doklady = (0, input_1.loadDoklady)(path.resolve(args.options.get("doklady")));
-    const report = await (0, write_1.zapis)({ kaktusDir, klienti, doklady, dryRun: args.flags.has("dry-run") });
-    (0, fs_util_1.writeJsonAtomic)(outFile, report);
+    const dryRun = args.flags.has("dry-run");
+    const report = await (0, write_1.zapis)({ kaktusDir, klienti, doklady, dryRun });
+    try {
+        (0, fs_util_1.writeJsonAtomic)(outFile, report);
+    }
+    catch (e) {
+        if (dryRun)
+            throw e; // nic se nezapsalo do Kaktusu, jde o běžnou chybu výstupu (exit 1)
+        // Doklady už mohou být v Kaktusu: výsledek nesmí zmizet, vypíšeme ho a skončíme s exit 2.
+        for (const l of shrnuti(report))
+            io.out(l);
+        for (const d of report.doklady) {
+            if (d.stav !== "odmitnuto")
+                io.out(`  ${d.id ?? "(bez id)"}: ${d.stav}${d.kaktusDoklad !== undefined ? ` ${d.kaktusDoklad}` : ""}`);
+        }
+        io.err(`Report se nepodařilo zapsat do "${outFile}": ${e instanceof Error ? e.message : String(e)}`);
+        return 2;
+    }
     for (const l of shrnuti(report))
         io.out(l);
     io.out(`Report: ${outFile}`);

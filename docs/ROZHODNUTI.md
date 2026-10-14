@@ -71,21 +71,49 @@ Průběžně doplňováno; podklad pro README.
 - **Prázdné po sanitaci.** Číslo dokladu nebo název dodavatele, které po odstranění znaků zůstanou
   prázdné, = doklad `odmitnuto`.
 - **Dedup – záložní shoda** používá číslo dokladu ve stejné podobě, v jaké ho zapisujeme
-  (sanitované, ořezané na 20), a dodavatele podle IČO (přes všechny partnery se stejným IČO),
-  bez IČO podle názvu ořezaného na 40. VS se nepoužívá. Důsledek ořezu: dva různé doklady stejného
-  dodavatele, jejichž čísla se liší až za 20. znakem, se při záložní shodě považují za jeden
-  (druhý by skončil jako `jiz_zapsano`); je to vzácné a doklad dostane varování o ořezu.
+  (sanitované, ořezané na 20), a dodavatele. Dodavatel se porovnává takto (shoda je symetrická):
+  když mají IČO obě strany (doklad z TAXY i partner v Kaktusu), musí se shodovat IČO – přes
+  všechny partnery se stejným IČO; když IČO chybí alespoň na jedné straně, musí se shodovat
+  název (NFC, sloučené mezery, ořez na 40 znaků, bez rozlišení velikosti písmen). Doklad z TAXY
+  bez IČO se tedy hledá podle názvu přes všechny partnery (i ty s IČO), doklad s IČO podle IČO
+  a navíc podle názvu mezi partnery bez IČO (např. Holz Bauer GmbH, ID 16). Dřívější varianta
+  „s IČO jen podle IČO, bez IČO jen podle názvu mezi partnery bez IČO“ nenašla ručně zadaný doklad,
+  když IČO chybělo jen na jedné straně, a doklad se zapsal podruhé (a založil se nový partner).
+  Stejné pravidlo platí pro duplicity uvnitř vstupu. VS se nepoužívá. Důsledek ořezu: dva různé
+  doklady stejného dodavatele, jejichž čísla se liší až za 20. znakem, se při záložní shodě
+  považují za jeden (druhý by skončil jako `jiz_zapsano`); je to vzácné a doklad dostane
+  varování o ořezu. Důsledek porovnání podle názvu: dva různé subjekty se stejným názvem a stejným
+  číslem dokladu, z nichž jeden nemá IČO, se považují za jednoho dodavatele (zvolená bezpečnější
+  chyba: raději nezapsat než zapsat podruhé).
 - **Dedup – partner smazaný v adresáři.** Pro určení dodavatele existujícího dokladu se použije
   i partner s příznakem smazání (nesmazaný doklad zůstává platným dokladem, i když někdo smazal
   jeho partnera; opačný postup by vedl k duplicitnímu zápisu). Smazané *doklady* se naopak
-  ignorují a vedou jen k varování.
-- **Smazaný doklad se stejným číslem** (i smazaný doklad s naší značkou `TAXY:<id>`) není
-  duplicita: doklad se zapíše s varováním a číslem smazaného dokladu.
-- **Duplicita uvnitř vstupu** (stejná firma + dodavatel + číslo dokladu, jiné `id`): první se
-  zapíše, další je `odmitnuto` s důvodem „Duplicita ve vstupu…“. Zvolen `odmitnuto`, ne
-  `jiz_zapsano`: doklad nebyl nikam zapsán, a při dalším běhu zůstane výsledek stejný (první už
-  bude `jiz_zapsano` přes značku, druhý stále duplicita). Porovnává se po sanitaci a ořezu, jako
-  v Kaktusu. Pořadí kontrol: značka `TAXY:<id>` → duplicita ve vstupu → záložní shoda podle čísla.
+  ignorují jako duplicitu (viz „Smazaný doklad“ níže).
+- **Smazaný doklad.** Dva případy se záměrně liší:
+  - *Smazaný záznam s naší značkou `TAXY:<id>`* znamená „doručeno a účetní v Kaktusu smazala“.
+    Doklad se **nezapisuje znovu**: stav `odmitnuto` s důvodem „Doklad byl už zapsán (FPxxxx)
+    a v Kaktusu smazán – znovu ho nezapisujeme, rozhodne účetní.“ (zvolena bezpečnější varianta;
+    opětovný zápis by oživil doklad, který někdo úmyslně smazal, při každém běhu by se to opakovalo).
+    Pokud existuje nesmazaný záznam se stejnou značkou, má přednost (`jiz_zapsano`). Další výskyt
+    téhož dodavatele a čísla ve vstupu se pak odmítne jako duplicita (bez pokusu o zápis).
+  - *Smazaný ruční záznam bez značky* (např. Kuběna `FV26001877`) duplicita není: doklad se zapíše
+    s varováním a číslem smazaného dokladu.
+- **Duplicita uvnitř vstupu** (stejná firma + dodavatel + číslo dokladu, jiné `id`; pravidlo shody
+  dodavatele viz výše): první výskyt se zkusí zapsat, další výskyt se **odloží**, dokud není známý
+  výsledek prvního (ověřený podle DBF), a teprve pak se rozhodne:
+  - první je `zapsano`/`jiz_zapsano` → další zůstává `odmitnuto` (duplicita) s odkazem na
+    skutečně zapsaný doklad („…jako doklad doc_X, který je v Kaktusu jako FP26nnnn“);
+  - první skončil `chyba_kaktusu` nebo `odmitnuto` (např. E220 u DUZP 2025) → další výskyt se
+    přeplánuje proti čerstvým datům a zkusí se zapsat (je to typicky opravený doklad); případné
+    další výskyty se pak odkládají na něj;
+  - první je `neprovedeno` (zámek, pád, nebo byla přerušena firma) → další výskyt je také
+    `neprovedeno` (nikdy se nezapisují oba); při dalším běhu se rozhodne znovu.
+  Výjimka: je-li první výskyt konečně odmítnutý kvůli smazanému záznamu s naší značkou (viz výše),
+  další výskyt se neodkládá, ale rovnou odmítne. `planWrite` (čistá funkce) vrací duplicitu jako
+  `odmitnuto` s příznakem `odlozitNa` (ID prvního dokladu); rozhodnutí podle výsledku zápisu dělá
+  `write.ts`. V `--dry-run` se nic nezapisuje, takže duplicita zůstává `odmitnuto`. Opakované
+  `id` ve vstupu je odmítnuto vždy hned. Pořadí kontrol: značka `TAXY:<id>` → smazaná značka →
+  duplicita ve vstupu → záložní shoda podle čísla.
 - **Dávka.** Win-1250 bez BOM s deklarací `encoding="windows-1250"` (simulátor deklaraci
   nečte, dávku dekóduje vždy jako Win-1250), hodnoty přes jedinou funkci `escapeXml`
   (`& < > " '` + zahození znaků neplatných v XML 1.0), názvy elementů jsou konstanty, `firma`
@@ -101,7 +129,10 @@ Průběžně doplňováno; podklad pro README.
   `--kaktus`; chybí-li, je to chyba vstupu (exit 1) ještě před jakýmkoli zápisem. Spouštěč je
   vyměnitelný (`ZapisOpts.runner`), výjimka z něj se bere jako pád importu.
 - **Dočasné soubory:** každá dávka má nový `fs.mkdtemp(<tmp>/taxy-kaktus-)`; dávka i odpověď jsou
-  v něm, adresář se smaže v `finally`. Odpověď se nikdy nečte odjinud.
+  v něm. Odpověď se nikdy nečte odjinud. Adresář se maže v `finally` jako **best-effort**
+  (`maxRetries`, chyba úklidu např. EBUSY/EPERM se ignoruje): úklid nesmí přebít výsledek
+  doběhlého importu. Při selhání úklidu zůstane v tmp adresář s dávkou (jen XML s doklady,
+  práva 0600). Stejně se chová úklid po úspěšném `rename` v `writeFileAtomic`.
 - **Exit kódy importu:** 0 zpracováno, 2 dávka nečitelná (nic nezapsáno), 3 firma zamčená, 4 firma
   neexistuje, vše ostatní včetně timeoutu = pád. Každé selhání vede u nepotvrzených dokladů na
   `neprovedeno` a **zastaví další dávky téže firmy** (stav firmy je nejistý; ostatní firmy se
@@ -131,8 +162,10 @@ Průběžně doplňováno; podklad pro README.
   `FIRMY.DBF` nesmazané. Neexistující/smazaná firma se do plánu nedostane (doklady `odmitnuto`).
   Nečitelná data existující firmy = exit 1 před zápisem (poškozená firma se nesmí tvářit jako
   „neexistující“ a tím doklady odmítnout).
-- **Nečekaná výjimka uvnitř jedné firmy** se zachytí: její nezpracované doklady jsou `neprovedeno`,
-  report se přesto zapíše a ostatní firmy se zpracují.
+- **Nečekaná výjimka uvnitř jedné firmy** se zachytí. Import už mohl doběhnout, proto se
+  rozpracovaná dávka ověří podle čerstvě načteného FAKPRI (`reconcileDavka`): doklady se značkou
+  jsou `zapsano`, ostatní `neprovedeno`. Jen když nejde načíst ani FAKPRI, jsou `neprovedeno` všechny
+  nezpracované doklady firmy. Report se přesto zapíše a ostatní firmy se zpracují.
 - **Report** (`format: 1`) je bez časového razítka (deterministický, bajtově shodný při stejných
   datech): `rezim` (`zapis`/`dry-run`), `souhrn` (celkem, počty podle stavů, po firmách včetně
   `preruseno`) a `doklady[]` v pořadí vstupu s klíči `id, klientId, firma, stav, kaktusDoklad?,
@@ -141,5 +174,14 @@ Průběžně doplňováno; podklad pro README.
   nezapisuje (nevyžaduje ani `kaktus.cjs`).
 - **Exit kódy `zapis`:** 0 vše zpracováno (i s `odmitnuto` a `chyba_kaktusu`), 1 chybný vstup nebo
   konfigurace, 2 něco `neprovedeno`. Report se zapíše i při exit 2.
+- **Cíl `--out` se ověří před jakýmkoli importem** (`assertOutputWritable`): nadřazená složka musí
+  existovat (nevytváří se – překlep v cestě by jinak založil nechtěnou složku), cíl nesmí být složka
+  a do složky se musí dát zapisovat (zkušební `mkdtemp`); jinak exit 1 bez zápisu do Kaktusu.
+  (Příkaz `cist` nic neimportuje a nadřazené složky dál vytváří.) Když se zápis reportu přesto
+  nepodaří až po importu, výsledek se nesmí ztratit: souhrn a seznam dokladů (`id`, stav, číslo
+  dokladu) jde na stdout, chyba na stderr a exit kód je **2** (v Kaktusu už něco může být, spuštění
+  lze bezpečně zopakovat – doklady budou `jiz_zapsano`). V `--dry-run` je to běžná chyba výstupu (exit 1).
+- **Velikost dávky** (`ZapisOpts.maxDavka`, jen pro testy) musí být celé číslo 1–20, jinak
+  `VstupniChyba` ještě před čímkoli dalším (0 by zacyklilo zápis, >20 by Kaktus potichu ignoroval).
 - `main()` v `cli.ts` je od teď asynchronní (`Promise<number>`), protože import běží přes
   asynchronní `execFile`.

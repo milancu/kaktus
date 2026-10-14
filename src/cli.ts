@@ -8,7 +8,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { PouzitiChyba, VstupniChyba } from "./errors";
-import { writeJsonAtomic } from "./fs-util";
+import { assertOutputWritable, writeJsonAtomic } from "./fs-util";
 import { readAll } from "./kaktus/read";
 import { loadDoklady, loadKlienti } from "./taxy/input";
 import { zapis } from "./write";
@@ -129,10 +129,24 @@ async function runZapis(args: ParsedArgs, io: Io): Promise<number> {
   const kaktusDir = path.resolve(args.options.get("kaktus") as string);
   const outFile = path.resolve(args.options.get("out") as string);
   requireDirectory(kaktusDir);
+  // Cíl reportu se ověří PŘED jakýmkoli zápisem do Kaktusu (po importu už by nešlo nic vrátit).
+  assertOutputWritable(outFile);
   const klienti = loadKlienti(path.resolve(args.options.get("klienti") as string));
   const doklady = loadDoklady(path.resolve(args.options.get("doklady") as string));
-  const report = await zapis({ kaktusDir, klienti, doklady, dryRun: args.flags.has("dry-run") });
-  writeJsonAtomic(outFile, report);
+  const dryRun = args.flags.has("dry-run");
+  const report = await zapis({ kaktusDir, klienti, doklady, dryRun });
+  try {
+    writeJsonAtomic(outFile, report);
+  } catch (e) {
+    if (dryRun) throw e; // nic se nezapsalo do Kaktusu, jde o běžnou chybu výstupu (exit 1)
+    // Doklady už mohou být v Kaktusu: výsledek nesmí zmizet, vypíšeme ho a skončíme s exit 2.
+    for (const l of shrnuti(report)) io.out(l);
+    for (const d of report.doklady) {
+      if (d.stav !== "odmitnuto") io.out(`  ${d.id ?? "(bez id)"}: ${d.stav}${d.kaktusDoklad !== undefined ? ` ${d.kaktusDoklad}` : ""}`);
+    }
+    io.err(`Report se nepodařilo zapsat do "${outFile}": ${e instanceof Error ? e.message : String(e)}`);
+    return 2;
+  }
   for (const l of shrnuti(report)) io.out(l);
   io.out(`Report: ${outFile}`);
   return report.souhrn.pocty.neprovedeno > 0 ? 2 : 0;

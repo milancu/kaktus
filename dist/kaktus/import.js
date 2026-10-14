@@ -345,7 +345,7 @@ async function runImport(kaktusDir, davkaPath, odpovedPath, opts) {
 }
 /**
  * Zapíše dávku do nového dočasného adresáře (`fs.mkdtemp`), spustí import s odpovědí v novém
- * souboru téhož adresáře a adresář vždy smaže.
+ * souboru téhož adresáře a adresář se pokusí smazat (best-effort, chyba úklidu se ignoruje).
  */
 async function importDavka(kaktusDir, xml, opts) {
     const dir = fs.mkdtempSync(path.join(opts.tmpRoot ?? os.tmpdir(), "taxy-kaktus-"));
@@ -356,6 +356,13 @@ async function importDavka(kaktusDir, xml, opts) {
         return await runImport(kaktusDir, davkaPath, odpovedPath, opts);
     }
     finally {
-        fs.rmSync(dir, { recursive: true, force: true });
+        // Úklid je best-effort: selhání (EBUSY/EPERM, antivir…) nesmí přebít výsledek importu,
+        // který už proběhl a jehož výsledek se ověřuje podle DBF.
+        try {
+            fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+        }
+        catch {
+            // adresář zůstane v tmp; neovlivňuje data Kaktusu ani výsledek
+        }
     }
 }

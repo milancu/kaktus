@@ -4,7 +4,7 @@
 // Samotné spuštění importu, dávky po 20 a ověření výsledku řeší navazující kód (write.ts).
 
 import type { BatchDoklad } from "./kaktus/batch";
-import { dokladKey, buildDedupIndex, lookupMarker, lookupNumber } from "./kaktus/dedup";
+import { DodavatelDokladRejstrik, buildDedupIndex, lookupDoklad, lookupMarker } from "./kaktus/dedup";
 import type { DedupIndex } from "./kaktus/dedup";
 import { FIRMA_ID_RE } from "./kaktus/read";
 import type { Firma, FirmaData } from "./kaktus/read";
@@ -28,6 +28,12 @@ export interface PlanVysledek {
   duvod?: string;
   /** Číslo dokladu v Kaktusu (FPrrnnnn), je-li doklad už zapsaný (stav `jiz_zapsano`). */
   kaktusDoklad?: string;
+  /**
+   * Jen u `odmitnuto` jako duplicita ve vstupu: ID dokladu, jehož výsledek má rozhodnout.
+   * Duplicitu nelze definitivně odmítnout dřív, než Kaktus rozhodne o prvním výskytu (ten může
+   * skončit chybou, např. E220 – pak se další výskyt zkusí zapsat). Chybí-li, je odmítnutí konečné.
+   */
+  odlozitNa?: string;
   varovani: string[];
 }
 
@@ -38,6 +44,13 @@ export interface PlanovanyDoklad {
   klientId: number;
   doklad: BatchDoklad;
   varovani: string[];
+}
+
+/** První výskyt dodavatele + čísla dokladu ve vstupu. */
+interface VidenyDoklad {
+  id: string;
+  /** Lze o dalším výskytu rozhodnout až po výsledku tohoto dokladu (false: konečně odmítnutý). */
+  odlozitelne: boolean;
 }
 
 export interface PlanFirma {
@@ -107,8 +120,16 @@ export function planWrite(
   const perFirma = new Map<string, PlanFirma>();
   const indexy = new Map<string, DedupIndex>();
   const videnaId = new Set<string>();
-  /** firma + klíč dokladu → ID prvního dokladu s tímto klíčem (duplicita ve vstupu). */
-  const videneKlice = new Map<string, string>();
+  /** Firma → doklady ze vstupu podle dodavatele a čísla (duplicita ve vstupu). */
+  const videne = new Map<string, DodavatelDokladRejstrik<VidenyDoklad>>();
+  const videneFor = (firma: string): DodavatelDokladRejstrik<VidenyDoklad> => {
+    let r = videne.get(firma);
+    if (!r) {
+      r = new DodavatelDokladRejstrik<VidenyDoklad>();
+      videne.set(firma, r);
+    }
+    return r;
+  };
 
   const indexFor = (firma: string, data: FirmaData): DedupIndex => {
     let idx = indexy.get(firma);
@@ -166,27 +187,49 @@ export function planWrite(
     // 5. Deduplikace.
     const data = firmyData.get(firmaId) as FirmaData; // existence ověřila autorizace
     const idx = indexFor(firmaId, data);
-    const key = dokladKey(bd.dodavatel.ico, bd.dodavatel.nazev, bd.cisloDodavatele);
-    const vstupKey = `${firmaId}\u0000${key}`;
+    const rejstrik = videneFor(firmaId);
+    const { ico, nazev } = bd.dodavatel;
+    const cislo = bd.cisloDodavatele;
+    /** Zaznamená první výskyt dodavatele + čísla (další výskyty ve vstupu jsou duplicity). */
+    const zaznamenej = (odlozitelne: boolean): void => {
+      if (rejstrik.find(ico, nazev, cislo).length === 0) rejstrik.add(ico, nazev, cislo, { id, odlozitelne });
+    };
 
     const markerHits = lookupMarker(idx, id);
     const hotovo = markerHits.zive[0];
     if (hotovo !== undefined) {
-      if (!videneKlice.has(vstupKey)) videneKlice.set(vstupKey, id);
+      zaznamenej(true);
       vysledky.push({
         index, id, klientId, firma: firmaId, stav: "jiz_zapsano", kaktusDoklad: hotovo.doklad, varovani,
       });
       return;
     }
 
-    const predchozi = videneKlice.get(vstupKey);
-    if (predchozi !== undefined) {
-      odmitnout(id, klientId, firmaId, `Duplicita ve vstupu: stejný dodavatel a číslo dokladu jako doklad ${predchozi}.`, varovani);
+    // Smazaný záznam s naší značkou = doručeno a účetní ho v Kaktusu smazala → nezapisovat znovu.
+    const smazanyNas = markerHits.smazane[0];
+    if (smazanyNas !== undefined) {
+      zaznamenej(false);
+      odmitnout(
+        id, klientId, firmaId,
+        `Doklad byl už zapsán (${smazanyNas.doklad}) a v Kaktusu smazán – znovu ho nezapisujeme, rozhodne účetní.`,
+        varovani,
+      );
       return;
     }
-    videneKlice.set(vstupKey, id);
 
-    const cisloHits = lookupNumber(idx, key);
+    const predchozi = rejstrik.find(ico, nazev, cislo)[0];
+    if (predchozi !== undefined) {
+      vysledky.push({
+        index, id, klientId, firma: firmaId, stav: "odmitnuto",
+        duvod: `Duplicita ve vstupu: stejný dodavatel a číslo dokladu jako doklad ${predchozi.id}.`,
+        ...(predchozi.odlozitelne ? { odlozitNa: predchozi.id } : {}),
+        varovani,
+      });
+      return;
+    }
+    zaznamenej(true);
+
+    const cisloHits = lookupDoklad(idx, ico, nazev, cislo);
     const rucne = cisloHits.zive[0];
     if (rucne !== undefined) {
       vysledky.push({
@@ -199,9 +242,8 @@ export function planWrite(
       return;
     }
 
-    const smazane = [...markerHits.smazane, ...cisloHits.smazane];
-    if (smazane.length > 0) {
-      const cisla = [...new Set(smazane.map((f) => f.doklad))].join(", ");
+    if (cisloHits.smazane.length > 0) {
+      const cisla = [...new Set(cisloHits.smazane.map((f) => f.doklad))].join(", ");
       varovani.push(`V Kaktusu existuje smazaný doklad se stejným číslem dodavatele (${cisla}); doklad se přesto zapíše.`);
     }
 

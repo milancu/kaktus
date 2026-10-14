@@ -40,10 +40,12 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.STAVY = void 0;
+exports.overVelikostDavky = overVelikostDavky;
 exports.prazdnePocty = prazdnePocty;
 exports.sestavSouhrn = sestavSouhrn;
 exports.reconcileDavka = reconcileDavka;
 exports.loadFirmyData = loadFirmyData;
+exports.vyresOdlozene = vyresOdlozene;
 exports.zapis = zapis;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
@@ -56,6 +58,15 @@ const plan_1 = require("./plan");
 exports.STAVY = [
     "zapsano", "jiz_zapsano", "odmitnuto", "chyba_kaktusu", "neprovedeno", "k_zapisu",
 ];
+/** Ověří velikost dávky (celé číslo 1–20; Kaktus zpracuje jen prvních 20 dokladů). */
+function overVelikostDavky(velikost) {
+    if (velikost === undefined)
+        return batch_1.MAX_BATCH_SIZE;
+    if (!Number.isInteger(velikost) || velikost < 1 || velikost > batch_1.MAX_BATCH_SIZE) {
+        throw new errors_1.VstupniChyba(`Velikost dávky musí být celé číslo od 1 do ${batch_1.MAX_BATCH_SIZE}.`);
+    }
+    return velikost;
+}
 function prazdnePocty() {
     return { zapsano: 0, jiz_zapsano: 0, odmitnuto: 0, chyba_kaktusu: 0, neprovedeno: 0, k_zapisu: 0 };
 }
@@ -193,9 +204,20 @@ function neprovedeno(ctx, polozky, duvod) {
     for (const p of polozky)
         nastav(ctx.report[p.index], { stav: "neprovedeno", duvod });
 }
+/** Zapíše výsledky ověření dávky do reportu; vrací true, pokud je některý doklad `neprovedeno`. */
+function aplikujVysledky(ctx, polozky, vysledky) {
+    let nejasne = false;
+    vysledky.forEach((v, i) => {
+        const radek = ctx.report[polozky[i].index];
+        nastav(radek, { ...v, varovani: [...radek.varovani, ...v.varovani] });
+        if (v.stav === "neprovedeno")
+            nejasne = true;
+    });
+    return nejasne;
+}
 async function zpracujFirmu(ctx, firmaId, kZapisu) {
     const { opts } = ctx;
-    const velikost = opts.maxDavka ?? batch_1.MAX_BATCH_SIZE;
+    const velikost = overVelikostDavky(opts.maxDavka);
     let zbyva = [...kZapisu];
     const prerus = (duvod, polozky) => {
         ctx.prerusene.set(firmaId, duvod);
@@ -239,6 +261,7 @@ async function zpracujFirmu(ctx, firmaId, kZapisu) {
         const davka = (0, batch_1.buildBatches)(firmaId, items, batch_1.MAX_BATCH_SIZE)[0];
         if (davka === undefined)
             continue;
+        ctx.rozpracovana = { firmaId, polozky: davka.polozky };
         const imp = await (0, import_1.importDavka)(opts.kaktusDir, davka.xml, {
             firma: firmaId, pocet: davka.polozky.length, timeoutMs: opts.timeoutMs, runner: opts.runner, tmpRoot: opts.tmpRoot,
         });
@@ -247,17 +270,12 @@ async function zpracujFirmu(ctx, firmaId, kZapisu) {
             po = (0, read_1.readFirmaData)(opts.kaktusDir, firmaId);
         }
         catch {
+            ctx.rozpracovana = null;
             prerus(`Po importu se nepodařilo načíst data firmy ${firmaId}; výsledek nelze ověřit, zkuste znovu (zápis je idempotentní).`, [...davka.polozky, ...zbyva]);
             return;
         }
-        const vysledky = reconcileDavka(firmaId, davka.polozky, po, imp);
-        let nejasne = false;
-        vysledky.forEach((v, i) => {
-            const radek = ctx.report[davka.polozky[i].index];
-            nastav(radek, { ...v, varovani: [...radek.varovani, ...v.varovani] });
-            if (v.stav === "neprovedeno")
-                nejasne = true;
-        });
+        const nejasne = aplikujVysledky(ctx, davka.polozky, reconcileDavka(firmaId, davka.polozky, po, imp));
+        ctx.rozpracovana = null;
         if (imp.stav !== "zpracovano" || nejasne) {
             // Zámek, pád nebo neověřený doklad: další dávky téže firmy nezkoušíme (bezpečné spustit znovu).
             const d = duvodSelhani(firmaId, imp) ?? `Výsledek některých dokladů firmy ${firmaId} se nepodařilo ověřit.`;
@@ -267,11 +285,125 @@ async function zpracujFirmu(ctx, firmaId, kZapisu) {
     }
 }
 /**
+ * Nečekaná výjimka uvnitř firmy (např. selhání úklidu, I/O). Import už mohl doběhnout, takže
+ * rozpracovanou dávku ověříme podle čerstvě načteného FAKPRI (DBF je pravda); jen když se ani
+ * to nepodaří, zůstanou její doklady `neprovedeno` (přes pojistku v `zapis`).
+ */
+function zpracujVyjimku(ctx, firmaId, e) {
+    ctx.prerusene.set(firmaId, `Nečekaná chyba při zpracování firmy ${firmaId}${e instanceof Error ? `: ${e.message}` : "."}`);
+    const r = ctx.rozpracovana;
+    ctx.rozpracovana = null;
+    if (r === null || r.firmaId !== firmaId)
+        return;
+    const cekajici = r.polozky.filter((p) => ctx.report[p.index].stav === "k_zapisu");
+    if (cekajici.length === 0)
+        return;
+    try {
+        const po = (0, read_1.readFirmaData)(ctx.opts.kaktusDir, firmaId);
+        const imp = { stav: "pad", exitCode: null, odpoved: null, detail: "Nečekaná chyba po spuštění importu" };
+        aplikujVysledky(ctx, cekajici, reconcileDavka(firmaId, cekajici, po, imp));
+    }
+    catch {
+        // data nelze načíst → doklady zůstanou k_zapisu a pojistka je označí `neprovedeno`
+    }
+}
+async function zpracujPlan(ctx, perFirma) {
+    for (const [firmaId, pf] of perFirma) {
+        try {
+            await zpracujFirmu(ctx, firmaId, pf.kZapisu);
+        }
+        catch (e) {
+            zpracujVyjimku(ctx, firmaId, e);
+        }
+    }
+}
+/**
+ * Rozhodne o duplicitách ve vstupu podle výsledku jejich prvního výskytu (`odlozene`: index →
+ * ID prvního dokladu). Vrací indexy dokladů, které je třeba přeplánovat (první výskyt skončil
+ * `chyba_kaktusu`/`odmitnuto`, takže se další výskyt zkusí zapsat); ostatní řádky upraví:
+ *  - první je `zapsano`/`jiz_zapsano` → zůstává `odmitnuto` (duplicita), s odkazem na skutečný doklad;
+ *  - první je `neprovedeno` (nebo jeho firma byla přerušena) → také `neprovedeno` (nezapisovat oba).
+ * Zpracované položky z `odlozene` odstraní.
+ */
+function vyresOdlozene(report, odlozene, prerusene) {
+    const podleId = new Map();
+    for (const r of report)
+        if (r.id !== null && !podleId.has(r.id))
+            podleId.set(r.id, r);
+    const uvolnit = [];
+    for (const index of [...odlozene.keys()].sort((a, b) => a - b)) {
+        const predId = odlozene.get(index);
+        odlozene.delete(index);
+        const radek = report[index];
+        const pred = podleId.get(predId);
+        if (pred !== undefined && (pred.stav === "zapsano" || pred.stav === "jiz_zapsano")) {
+            const kde = pred.kaktusDoklad !== undefined ? ` jako ${pred.kaktusDoklad}` : "";
+            radek.duvod = `Duplicita ve vstupu: stejný dodavatel a číslo dokladu jako doklad ${predId}, který je v Kaktusu${kde}.`;
+            continue;
+        }
+        const firmaPreruseni = radek.firma === null ? undefined : prerusene.get(radek.firma);
+        if (pred !== undefined && (pred.stav === "chyba_kaktusu" || pred.stav === "odmitnuto") && firmaPreruseni === undefined) {
+            uvolnit.push(index);
+            continue;
+        }
+        nastav(radek, {
+            stav: "neprovedeno",
+            duvod: firmaPreruseni ?? `Výsledek dokladu ${predId} (stejný dodavatel a číslo dokladu) není znám; doklad se nezapisuje, zkuste znovu.`,
+        });
+    }
+    return uvolnit;
+}
+/**
+ * Po zpracování prvních výskytů přeplánuje odložené duplicity (viz `vyresOdlozene`) proti čerstvým
+ * datům Kaktusu a zapíše ty, které už nejsou duplicitou. Opakuje, dokud je co rozhodovat.
+ */
+async function zpracujOdlozene(ctx, odlozene) {
+    const { opts, report } = ctx;
+    for (let kolo = 0; odlozene.size > 0 && kolo <= opts.doklady.length; kolo++) {
+        const uvolnit = vyresOdlozene(report, odlozene, ctx.prerusene);
+        if (uvolnit.length === 0)
+            return;
+        const firmyData = new Map();
+        const planovat = [];
+        for (const index of uvolnit) {
+            const radek = report[index];
+            const firmaId = radek.firma; // duplicita se řeší až po autorizaci, firma je vždy vyplněna
+            if (!firmyData.has(firmaId) && !ctx.prerusene.has(firmaId)) {
+                try {
+                    firmyData.set(firmaId, (0, read_1.readFirmaData)(opts.kaktusDir, firmaId));
+                }
+                catch (e) {
+                    ctx.prerusene.set(firmaId, `Data firmy ${firmaId} nelze načíst${e instanceof Error ? `: ${e.message}` : "."}`);
+                }
+            }
+            if (firmyData.has(firmaId))
+                planovat.push(index);
+            else
+                nastav(radek, { stav: "neprovedeno", duvod: ctx.prerusene.get(firmaId) ?? "Data firmy nelze načíst." });
+        }
+        if (planovat.length === 0)
+            return;
+        const plan = (0, plan_1.planWrite)(opts.klienti, planovat.map((i) => opts.doklady[i]), firmyData);
+        for (const v of plan.vysledky) {
+            const puvodni = planovat[v.index];
+            nastav(report[puvodni], { stav: v.stav, kaktusDoklad: v.kaktusDoklad, duvod: v.duvod, varovani: v.varovani });
+            if (v.odlozitNa !== undefined)
+                odlozene.set(puvodni, v.odlozitNa);
+        }
+        const perFirma = new Map();
+        for (const [firmaId, pf] of plan.perFirma) {
+            perFirma.set(firmaId, { kZapisu: pf.kZapisu.map((p) => ({ ...p, index: planovat[p.index] })) });
+        }
+        await zpracujPlan(ctx, perFirma);
+    }
+}
+/**
  * Provede zápis (nebo jeho plán při `dryRun`). Nikdy nehází kvůli pádu importu ani kvůli
  * nečekané chybě uvnitř jedné firmy (její zbylé doklady jsou `neprovedeno`); `VstupniChyba`
- * vyhazuje jen před jakýmkoli zápisem (nečitelná data, chybějící kaktus.cjs).
+ * vyhazuje jen před jakýmkoli zápisem (nečitelná data, chybějící kaktus.cjs, neplatná velikost dávky).
  */
 async function zapis(opts) {
+    overVelikostDavky(opts.maxDavka);
     const dryRun = opts.dryRun === true;
     if (!dryRun)
         (0, import_1.resolveKaktusScript)(opts.kaktusDir);
@@ -287,15 +419,14 @@ async function zapis(opts) {
     });
     const prerusene = new Map();
     if (!dryRun) {
-        const ctx = { opts, report, prerusene };
-        for (const [firmaId, pf] of plan.perFirma) {
-            try {
-                await zpracujFirmu(ctx, firmaId, pf.kZapisu);
-            }
-            catch (e) {
-                prerusene.set(firmaId, `Nečekaná chyba při zpracování firmy ${firmaId}${e instanceof Error ? `: ${e.message}` : "."}`);
-            }
-        }
+        const ctx = { opts, report, prerusene, rozpracovana: null };
+        // Duplicity ve vstupu se rozhodnou až podle výsledku prvního výskytu (např. E220 u prvního).
+        const odlozene = new Map();
+        for (const v of plan.vysledky)
+            if (v.odlozitNa !== undefined)
+                odlozene.set(v.index, v.odlozitNa);
+        await zpracujPlan(ctx, plan.perFirma);
+        await zpracujOdlozene(ctx, odlozene);
         // Pojistka: doklad, který zůstal ve stavu „k zápisu“, nebyl zpracován.
         for (const r of report) {
             if (r.stav === "k_zapisu") {

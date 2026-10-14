@@ -190,7 +190,7 @@ describe("Zamčená firma", () => {
       const rep = JSON.parse(fs.readFileSync(out, "utf8")) as ZapisReport;
       assert.ok(fakpriBytes(sb, "0001").equals(fak1), "FAKPRI zamčené firmy se nesmí změnit");
       assert.ok(adresarBytes(sb, "0001").equals(adr1), "ADRESAR zamčené firmy se nesmí změnit");
-      assert.equal(rep.souhrn.firmy["0001"]?.pocty.neprovedeno, 25, "24 k zápisu + doklad s DUZP 2025, který by dostal E220");
+      assert.equal(rep.souhrn.firmy["0001"]?.pocty.neprovedeno, 26, "24 k zápisu + DUZP 2025 + odložená duplicita doc_a88ae33500");
       assert.equal(rep.souhrn.firmy["0001"]?.pocty.zapsano, 0);
       assert.match(rep.souhrn.firmy["0001"]?.preruseno ?? "", /FIRMA\.LCK/);
       assert.equal(rep.souhrn.firmy["0002"]?.pocty.zapsano, 5);

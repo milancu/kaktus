@@ -37,6 +37,7 @@ function zapisArgs(sb: Sandbox, over: Record<string, string> = {}, flags: string
 function seed(sb: Sandbox, doklady: unknown = [mkDoklad("c1")]): void {
   fs.copyFileSync(path.join(ROOT, "taxy", "klienti.json"), path.join(sb.root, "klienti.json"));
   fs.writeFileSync(path.join(sb.root, "doklady.json"), JSON.stringify(doklady));
+  fs.mkdirSync(path.join(sb.root, "out"), { recursive: true });
 }
 
 describe("parseArgs", () => {

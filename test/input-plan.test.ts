@@ -241,14 +241,15 @@ describe("planWrite", () => {
     assert.equal(p.vysledky[1]?.stav, "jiz_zapsano");
   });
 
-  it("smazaný doklad se značkou nebo číslem NENÍ duplicita: k_zapisu s varováním", () => {
+  it("smazaný záznam s naší značkou = odmitnuto (smazáno v Kaktusu); smazaný ruční záznam bez značky = k_zapisu s varováním", () => {
     const data = f1(
       [fak(1, 1, "T-p6", "TAXY:p6", true), fak(2, 1, "T-p7", "", true)],
       [dod(1, "90999001", "Testovací dodavatel p6"), dod(2, "90999001", "Testovací dodavatel p7")],
     );
     const p = planWrite(klienti, [mkDoklad("p6"), mkDoklad("p7")], mapa(data, f2()));
-    assert.deepEqual(p.vysledky.map((v) => v.stav), ["k_zapisu", "k_zapisu"]);
-    assert.ok(p.vysledky[0]?.varovani.some((v) => /smazaný doklad/.test(v)));
+    assert.deepEqual(p.vysledky.map((v) => v.stav), ["odmitnuto", "k_zapisu"]);
+    assert.match(p.vysledky[0]?.duvod ?? "", /smazán/);
+    assert.equal(p.vysledky[0]?.odlozitNa, undefined);
     assert.ok(p.vysledky[1]?.varovani.some((v) => /smazaný doklad/.test(v)));
   });
 

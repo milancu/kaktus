@@ -3,17 +3,17 @@
 ## Nutné
 
 1. **Ověřit na skutečném `KAKTUS.EXE`** a reálných datech. Celé řešení stojí na tom, že se
-   simulátor chová jako skutečný program.
+   simulátor chová jako skutečný program. Mimo jiné zjistit, jestli Kaktus nebrání čtení DBF,
+   když ho má účetní otevřený.
 2. **Zabránit dvěma konektorům nad stejnou firmou zároveň.** Oba by si spočítaly stejné další číslo
    dokladu a mohly by si navzájem přepsat zápis.
 3. **Zálohovat DBF před importem** a po výpadku proudu umět poznat poškozený soubor.
 4. **Hlásit výsledek na server TAXY** včetně stavu „nedokončeno“ a takové doklady automaticky
    zkusit znovu.
 
-## Další kroky
+## Další krok
 
-- Zjistit otevřené účetní období z Kaktusu dopředu, ne až z chyby E220.
-- Když má Kaktus DBF zrovna otevřený a Windows ho nedovolí přečíst, zkusit to za chvíli znovu.
+Zjistit otevřené účetní období z Kaktusu dopředu, ne až z chyby E220.
 
 ## Neošetřený případ
 

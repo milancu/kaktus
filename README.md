@@ -13,7 +13,7 @@ node dist/cli.js zapis --kaktus ./kaktus --klienti taxy/klienti.json \
 npm test
 ```
 
-Exit kódy: 0 zpracováno (i s odmítnutými doklady), 1 chybný vstup, 2 nedokončeno (zamčená firma, pád importu). Kód 2 je bezpečné spustit znovu.
+Exit kódy: 0 zpracováno (i s odmítnutými doklady), 1 chybný vstup, 2 nedokončeno (zamčená firma, pád importu). Po kódu 2 je bezpečné příkaz spustit znovu.
 
 ## Co umí
 

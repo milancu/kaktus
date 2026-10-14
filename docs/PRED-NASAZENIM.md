@@ -1,7 +1,7 @@
 # Před nasazením do produkce
 
-Co se nevešlo do 3hodinového rozsahu úkolu. Orchestrátor sem průběžně doplňuje, co během
-práce vypadlo z plánu.
+Co se nevešlo do 3hodinového rozsahu úkolu. Orchestrátor sem během práce doplňoval, co
+vypadlo z plánu.
 
 - Ověřit na skutečném `KAKTUS.EXE` a reálných datech (kódování, chování zámku, limit dávky, exit kódy).
 - Vlastní zámek proti souběžnému běhu konektoru nad stejnou firmou (číslování `FP26nnnn` má race).

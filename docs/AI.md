@@ -25,8 +25,8 @@ docs-writer – každý s vlastními pravidly, modelem a effortem).
   a jednotlivá zjištění jsem si nechal vysvětlit.
 - S pomocí AI jsem si udělal artifact, na kterém jsem si ověřil své předpoklady, jak řešení
   funguje teď a jak má fungovat.
-- Výsledek orchestrátora jsem nenechal bez kontroly: nechal jsem ho nezávisle přezkoušet
-  v druhé session (testy, celý běh zápisu, zamčená firma, duplicity).
+- Výsledek orchestrátora jsem nechal nezávisle přezkoušet v první session, mimo orchestrátora
+  (testy, celý běh zápisu, zamčená firma, duplicity).
 
 ## Kde se AI spletla
 

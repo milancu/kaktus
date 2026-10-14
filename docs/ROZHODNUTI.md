@@ -5,7 +5,7 @@ Průběžně doplňováno; podklad pro README.
 ## Čtení (`cist`)
 
 - **Smazané záznamy se ve výstupu `cist` ponechávají** s příznakem `smazano: true`
-  (transparentnost; zápis s nimi pracuje zvlášť – smazaný doklad není duplicita).
+  (aby bylo vidět, co v Kaktusu skutečně je; zápis s nimi pracuje zvlášť – smazaný doklad není duplicita).
   Smazaná firma ve `FIRMY.DBF` je ve výstupu také, ale s `dodavatele: null` a `faktury: null`
   (data se nečtou, firma se nikdy nesmí autorizovat).
 - Výstup má pro každou firmu dodavatele (ADRESAR) a přijaté faktury (FAKPRI); faktura odkazuje
@@ -30,13 +30,13 @@ Průběžně doplňováno; podklad pro README.
 - **Dev závislost `@types/node@18.19.130` navíc k `typescript`.** Bez typů Node nelze
   `fs`/`path`/`node:test` v TypeScriptu přeložit. Verze 18 je záměrná: typová kontrola pak
   chytí použití API novějších než Node 18. Do runtime nic nepřibývá.
-- `typescript` je pinned na 5.9.3 (ne 7.x – ta řada má jiný překladač/CLI; pro stabilitu build chain).
+- `typescript` je pinned na 5.9.3 (ne 7.x – ta řada má jiný překladač/CLI; kvůli stabilitě buildu).
 - Testy se kompilují zvlášť (`tsconfig.test.json` → `build-test/`, v `.gitignore`), aby `dist/`
   obsahoval jen produkční kód. Testy tak importují `../src/...` a běží nad kompilací v `build-test/src/`.
   `npm test` = build + build:test + `scripts/run-tests.js` (hledá `*.test.js` sám, protože cmd
   na Windows nerozbaluje globy).
 - Atomický zápis JSON: dočasný soubor v adresáři vytvořeném `fs.mkdtemp` ve složce cíle,
-  `fsync`, `rename`; adresář se vždy uklidí.
+  `fsync`, `rename`; adresář se pak uklidí (best-effort, viz „Dočasné soubory“).
 
 ## Zápis: vstup, autorizace, deduplikace (plánovací část)
 
@@ -186,5 +186,5 @@ Průběžně doplňováno; podklad pro README.
   lze bezpečně zopakovat – doklady budou `jiz_zapsano`). V `--dry-run` je to běžná chyba výstupu (exit 1).
 - **Velikost dávky** (`ZapisOpts.maxDavka`, jen pro testy) musí být celé číslo 1–20, jinak
   `VstupniChyba` ještě před čímkoli dalším (0 by zacyklilo zápis, >20 by Kaktus potichu ignoroval).
-- `main()` v `cli.ts` je od teď asynchronní (`Promise<number>`), protože import běží přes
+- `main()` v `cli.ts` je asynchronní (`Promise<number>`), protože import běží přes
   asynchronní `execFile`.
